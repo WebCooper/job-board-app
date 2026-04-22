@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-notifications
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-notifications
+  template:
+    metadata:
+      labels:
+        app: postgres-notifications
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        env:
+        - name: POSTGRES_USER
+          value: "notif_admin"
+        - name: POSTGRES_PASSWORD
+          value: "notif_password"
+        - name: POSTGRES_DB
+          value: "notif_db"
+        ports:
+        - containerPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-notifications
+spec:
+  selector:
+    app: postgres-notifications
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP
