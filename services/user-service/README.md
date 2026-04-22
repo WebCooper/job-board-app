@@ -1,4 +1,4 @@
-# go-multi-tenant-auth
+# User Service
 
 A multi-tenant gRPC authentication and authorization service built with Go and [Zitadel](https://zitadel.com). Each tenant maps to a dedicated Zitadel organization, providing strong isolation of identities, roles, and data at the auth layer.
 
