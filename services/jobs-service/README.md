@@ -53,12 +53,12 @@ curl http://localhost:3002/health
 * **Publishing:** Updates job statuses to `PUBLISHED` upon successful payment.
 * **Rollbacks (Compensating Transactions):** Exposes a hard-delete endpoint used by the Saga Orchestrator to remove draft jobs if a distributed transaction fails.
 
-## Internal APIs (Used by Saga Orchestrator)
+## Internal APIs - Used by Saga Orchestrator
 * `POST /api/v1/jobs` - Create a draft job.
 * `PUT /api/v1/jobs/:id/publish` - Publish a job.
 * `DELETE /api/v1/jobs/:id` - Hard delete a draft job.
 
-## Public APIs (Candidate Facing)
+## Public APIs - Candidate Facing
 The following public endpoints are planned but not implemented yet in the current code:
 * `GET /api/v1/jobs` - List basic published jobs.
 * `GET /api/v2/jobs` - Advanced search (Redis caching to be implemented in Phase 4).

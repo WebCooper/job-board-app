@@ -29,7 +29,7 @@ Consumes RabbitMQ events and sends transactional emails via Resend. Persists eve
 docker-compose up
 ```
 
-## Publishing an Event (from other services)
+## Publishing an Event from other services
 
 Publish a JSON object to the `notifications` queue. The `eventType` field determines which template fires.
 

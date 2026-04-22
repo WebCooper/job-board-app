@@ -3,7 +3,7 @@
 The Application Service acts as the "Brain" of the distributed system. It orchestrates complex, multi-service workflows using the Saga Pattern to ensure data consistency across isolated microservices.
 
 ## Prerequisites
-- Node.js 22+ (or any currently supported LTS version)
+- Node.js 22+
 - npm
 - PostgreSQL 15+
 - Running `jobs-service` and `payment-service` instances
