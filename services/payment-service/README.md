@@ -3,7 +3,7 @@
 The Payment Service is a simulated microservice responsible for handling employer charges during the job posting flow. It manages its own isolated PostgreSQL database (`payments_db`).
 
 ## Prerequisites
-- Node.js 22+ (or any currently supported LTS version)
+- Node.js 22+
 - npm
 - PostgreSQL 15+
 

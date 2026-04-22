@@ -37,7 +37,7 @@ jobs:
             echo "No services changed"
             echo 'services=[]' >> $GITHUB_OUTPUT
           else
-            JSON=$(printf '%s\n' $SERVICES | jq -R . | jq -s .)
+            JSON=$(printf '%s\n' $SERVICES | jq -R . | jq -s -c .)
             echo "services=$JSON" >> $GITHUB_OUTPUT
           fi
 
