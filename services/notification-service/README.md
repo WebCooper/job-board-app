@@ -58,13 +58,6 @@ Publish a JSON object to the `notifications` queue. The `eventType` field determ
 }
 ```
 
-## Health Check
-
-```
-GET http://localhost:3004/health
-→ { "status": "ok" }
-```
-
 ## Project Structure
 
 ```
@@ -83,8 +76,6 @@ src/
 │   ├── notifications.consumer.ts     # RabbitMQ @EventPattern handler
 │   ├── notifications.module.ts
 │   └── notifications.service.ts      # routing + persistence logic
-├── health/
-│   └── health.controller.ts
 ├── app.module.ts
 └── main.ts                           # hybrid bootstrap
 ```
