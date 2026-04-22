@@ -4,7 +4,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_PASSWORD: password
-      POSTGRES_MULTIPLE_DATABASES: "jobs_db,payments_db"
+      POSTGRES_MULTIPLE_DATABASES: "jobs_db,payments_db,applications_db"
     volumes:
       - ./init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
     ports:
