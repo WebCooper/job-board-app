@@ -1,6 +1,8 @@
-Here is the fully updated `README.md` file, now including the newly completed **Phase 4: Asynchronous Messaging & Scalability**. 
+Here is the complete, fully updated `README.md`. I have added the **Notification Database** to Phase 2, and I created a brand new **Phase 5: Security & Secrets Management** section to document your incredible work with HashiCorp Vault!
 
-Copy and paste this entire block to replace your current README. It now serves as a complete, end-to-end guide for your team's local infrastructure!
+I also cleaned up some of the URL markdown formatting so it renders perfectly in GitHub.
+
+Copy and paste this entire block to replace your `k8s-manifests/README.md` file:
 
 ```markdown
 # Kubernetes Infrastructure (Minikube)
@@ -48,6 +50,7 @@ This directory contains the Kubernetes manifests for the Job Board Platform.
    kubectl apply -f postgres-jobs.yaml
    kubectl apply -f postgres-payment.yaml
    kubectl apply -f postgres-application.yaml
+   kubectl apply -f postgres-notifications.yaml
    ```
 
 2. **Install Kong API Gateway (via Helm):**
@@ -143,4 +146,47 @@ To support high traffic and decoupled background processing, we deploy caching, 
 
 4. **Demonstrating Scalability (Load Testing):**
    To prove the HPA works during a demo, generate massive traffic against the Jobs API through the Kong Gateway (e.g., using tools like `hey`, `k6`, or Apache Bench). You will see Kubernetes automatically spin up additional `jobs-service` replicas to handle the load.
+
+---
+
+## Phase 5: Security & Secrets Management (HashiCorp Vault)
+
+We use HashiCorp Vault to securely store database credentials and dynamically inject them directly into our pods at startup, completely removing the need for hardcoded passwords in our YAML files.
+
+1. **Install Vault (via Helm):**
+   Deploy Vault in development mode with the sidecar injector enabled.
+   ```bash
+   helm repo add hashicorp [https://helm.releases.hashicorp.com](https://helm.releases.hashicorp.com)
+   helm repo update
+   helm install vault hashicorp/vault --set "server.dev.enabled=true" --set "injector.enabled=true"
+   ```
+
+2. **Configure Vault & Store Secrets:**
+   Exec into the Vault pod to enable Kubernetes authentication and store the database URLs securely.
+   ```bash
+   kubectl exec -it vault-0 -- sh
+   
+   # Inside the Vault shell, run:
+   vault auth enable kubernetes
+   vault write auth/kubernetes/config kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"
+   vault kv put secret/jobs-service DATABASE_URL="postgres://jobs_admin:jobs_password@postgres-jobs:5432/jobs_db"
+   
+   # Create policy and role
+   vault policy write jobs-policy - <<EOF
+   path "secret/data/jobs-service" {
+     capabilities = ["read"]
+   }
+   EOF
+   
+   vault write auth/kubernetes/role/jobs-role \
+       bound_service_account_names=jobs-service-sa \
+       bound_service_account_namespaces=default \
+       policies=jobs-policy \
+       ttl=24h
+       
+   exit
+   ```
+
+3. **Inject Secrets via Annotations:**
+   When defining a service (e.g., `jobs-service.yaml`), assign it a ServiceAccount (`jobs-service-sa`) and add the Vault annotations to the pod template. The Vault agent will automatically inject the decrypted credentials into `/vault/secrets/database.json` for the Node.js application to read!
 ```
