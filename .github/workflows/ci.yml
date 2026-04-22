@@ -1,0 +1,77 @@
+name: Build and Push Services
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set-matrix.outputs.services }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get changed services
+        id: set-matrix
+        run: |
+          echo "Detecting changed services..."
+
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+
+          SERVICES=$(echo "$CHANGED_FILES" | grep '^services/' | cut -d/ -f2 | sort -u)
+
+          if [ -z "$SERVICES" ]; then
+            echo "No services changed"
+            echo 'services=[]' >> $GITHUB_OUTPUT
+          else
+            JSON=$(printf '%s\n' $SERVICES | jq -R . | jq -s .)
+            echo "services=$JSON" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    name: Build & Push
+    needs: detect-changes
+    runs-on: ubuntu-latest
+
+    if: needs.detect-changes.outputs.services != '[]'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build and Push Image
+        run: |
+          SERVICE=${{ matrix.service }}
+          IMAGE=${{ secrets.DOCKER_USERNAME }}/${SERVICE}
+
+          echo "Building $SERVICE..."
+
+          docker build \
+            -t $IMAGE:${{ github.sha }} \
+            -t $IMAGE:latest \
+            ./services/$SERVICE
+
+          echo "Pushing $SERVICE..."
+
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+
+      - name: Output image info
+        run: |
+          echo "Built image: ${{ secrets.DOCKER_USERNAME }}/${{ matrix.service }}:${{ github.sha }}"
