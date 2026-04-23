@@ -19,6 +19,18 @@ Environment variables:
 - `PORT`: HTTP port for this service (defaults to `3002`)
 - `DATABASE_URL`: PostgreSQL connection string for the jobs database
 
+## Runtime Secret Source (Current)
+
+In the current Kubernetes deployment, this service reads database credentials from Vault-injected file:
+
+- `/vault/secrets/database`
+
+The app is currently configured in Vault-only mode for DB URL loading in container runtime. It does not use `process.env.DATABASE_URL` at startup.
+
+For Kubernetes, configure Vault injection through `k8s-manifests/jobs-service.yaml` and `k8s-manifests/jobs-service-sa.yaml`.
+
+For local development, if you run this service outside Kubernetes, you must provide equivalent secret-file behavior or temporarily add env fallback logic for local-only workflows.
+
 ## Database Setup
 1. Create the database user and database (example):
 
@@ -45,6 +57,30 @@ node index.js
 Health check:
 
 ```bash
+curl http://localhost:3002/health
+```
+
+## Run On Kubernetes (Vault Enabled)
+
+Apply jobs database + service account + jobs deployment:
+
+```bash
+kubectl apply -f k8s-manifests/postgres-jobs.yaml
+kubectl apply -f k8s-manifests/jobs-service-sa.yaml
+kubectl apply -f k8s-manifests/jobs-service.yaml
+kubectl rollout status deployment/jobs-service-deployment
+```
+
+Verify Vault-injected secret file in pod:
+
+```bash
+kubectl exec <jobs-pod> -c vault-agent -- cat /vault/secrets/database
+```
+
+Verify health endpoint:
+
+```bash
+kubectl port-forward svc/jobs-service 3002:80
 curl http://localhost:3002/health
 ```
 

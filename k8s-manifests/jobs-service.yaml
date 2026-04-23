@@ -13,13 +13,50 @@ spec:
     metadata:
       labels:
         app: jobs-service
+      annotations:
+        traffic.sidecar.istio.io/excludeOutboundPorts: "8200"
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "jobs-role"
+        vault.hashicorp.com/agent-inject-secret-database: "secret/data/jobs-service"
+        vault.hashicorp.com/agent-inject-template-database: |
+          {{- with secret "secret/data/jobs-service" -}}
+          {{ .Data.data.DATABASE_URL }}
+          {{- end }}
     spec:
+      serviceAccountName: jobs-service-sa
       containers:
       - name: jobs-service
-        image: chamudithak/jobs-service:latest
-        imagePullPolicy: Always
+        image: chamudithak/jobs-service:vault-2026.04.23.1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PORT
+          value: "5678"
+        - name: NODE_ENV
+          value: "development"
         ports:
         - containerPort: 5678
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 5678
+          failureThreshold: 30
+          periodSeconds: 3
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5678
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
