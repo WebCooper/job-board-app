@@ -13,7 +13,17 @@ spec:
     metadata:
       labels:
         app: application-service
+      annotations:
+        traffic.sidecar.istio.io/excludeOutboundPorts: "8200"
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "application-role"
+        vault.hashicorp.com/agent-inject-secret-database: "secret/data/application-service"
+        vault.hashicorp.com/agent-inject-template-database: |
+          {{- with secret "secret/data/application-service" -}}
+          {{ .Data.data.DATABASE_URL }}
+          {{- end }}
     spec:
+      serviceAccountName: application-service-sa
       containers:
       - name: application-service
         image: hashicorp/http-echo:latest
@@ -21,6 +31,26 @@ spec:
           - "-text=Hello from the Application Service (Saga Orchestrator)!"
         ports:
         - containerPort: 5678
+        startupProbe:
+          tcpSocket:
+            port: 5678
+          failureThreshold: 30
+          periodSeconds: 3
+          timeoutSeconds: 2
+        readinessProbe:
+          tcpSocket:
+            port: 5678
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service

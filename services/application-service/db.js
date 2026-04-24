@@ -13,7 +13,7 @@ const appDataSource = new DataSource({
 
 const initDB = async () => {
     await appDataSource.initialize();
-    console.log("applications_db initialized");
+    console.log("applications_db is initialized");
 };
 
 const getApplicationRepository = () => appDataSource.getRepository('Application');

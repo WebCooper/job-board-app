@@ -13,14 +13,61 @@ spec:
     metadata:
       labels:
         app: notification-service
+      annotations:
+        traffic.sidecar.istio.io/excludeOutboundPorts: "8200"
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "notification-role"
+        vault.hashicorp.com/agent-inject-secret-database: "secret/data/notification-service"
+        vault.hashicorp.com/agent-inject-template-database: |
+          {{- with secret "secret/data/notification-service" -}}
+          export DB_HOST="{{ .Data.data.DB_HOST }}"
+          export DB_PORT="{{ .Data.data.DB_PORT | default "5432" }}"
+          export DB_USER="{{ .Data.data.DB_USER }}"
+          export DB_PASSWORD="{{ .Data.data.DB_PASSWORD }}"
+          export DB_NAME="{{ .Data.data.DB_NAME }}"
+          {{- end }}
     spec:
+      serviceAccountName: notification-service-sa
       containers:
       - name: notification-service
-        image: hashicorp/http-echo:latest
+        image: chamudithak/notification-service:2026.04.24.10
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/sh
+          - -c
         args:
-          - "-text=Hello from the Notification Service!"
+          - . /vault/secrets/database && exec node dist/main
+        env:
+        - name: PORT
+          value: "3004"
+        - name: NODE_ENV
+          value: "development"
+        - name: RABBITMQ_URL
+          value: amqp://guest:guest@rabbitmq:5672
+        - name: RABBITMQ_QUEUE
+          value: notifications
         ports:
-        - containerPort: 5678
+        - containerPort: 3004
+        startupProbe:
+          tcpSocket:
+            port: 3004
+          failureThreshold: 30
+          periodSeconds: 3
+          timeoutSeconds: 2
+        readinessProbe:
+          tcpSocket:
+            port: 3004
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -32,5 +79,5 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 5678
+      targetPort: 3004
   type: ClusterIP

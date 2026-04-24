@@ -70,13 +70,54 @@ kubectl exec vault-0 -- sh -c 'vault kv put secret/jobs-service DATABASE_URL=pos
 # Create Policy
 kubectl exec vault-0 -- sh -c 'printf "path \"secret/data/jobs-service\" {\n  capabilities = [\"read\"]\n}\n" > /tmp/jobs-policy.hcl; vault policy write jobs-policy /tmp/jobs-policy.hcl'
 
-# Create Role for Service Account (with audience set to prevent JWT warnings)
+# Create Role for Service Account
+# Note: Do not set audience unless your cluster SA token audience is explicitly configured to match.
 kubectl exec vault-0 -- sh -c 'vault write auth/kubernetes/role/jobs-role \
     bound_service_account_names=jobs-service-sa \
     bound_service_account_namespaces=default \
     policies=jobs-policy \
-    audience=vault \
     ttl=24h'
+```
+
+### Service Configuration (Payment Service)
+```powershell
+# Store Database Secret
+kubectl exec vault-0 -- sh -c 'vault kv put secret/payment-service DATABASE_URL=postgresql://payment_admin:payment_password@postgres-payment:5432/payment_db'
+
+# Create Policy
+kubectl exec vault-0 -- sh -c 'printf "path \"secret/data/payment-service\" {\n  capabilities = [\"read\"]\n}\n" > /tmp/payment-policy.hcl; vault policy write payment-policy /tmp/payment-policy.hcl'
+
+# Create Role for Service Account
+kubectl exec vault-0 -- sh -c 'vault write auth/kubernetes/role/payment-role \
+   bound_service_account_names=payment-service-sa \
+   bound_service_account_namespaces=default \
+   policies=payment-policy \
+   ttl=24h'
+
+# Apply Kubernetes manifests and validate rollout
+kubectl apply -f k8s-manifests/payment-service-sa.yaml
+kubectl apply -f k8s-manifests/payment-service.yaml
+kubectl rollout status deployment/payment-service-deployment
+kubectl get pods -o wide
+kubectl describe deployment payment-service-deployment
+```
+
+### Troubleshooting: invalid audience (aud) claim
+If payment pods are stuck during Vault init and logs show:
+
+* invalid audience (aud) claim: audience claim does not match any expected audience
+
+then recreate the role without audience:
+
+```powershell
+kubectl exec vault-0 -- sh -c 'vault delete auth/kubernetes/role/payment-role; vault write auth/kubernetes/role/payment-role \
+   bound_service_account_names=payment-service-sa \
+   bound_service_account_namespaces=default \
+   policies=payment-policy \
+   ttl=24h'
+
+kubectl delete pod -l app=payment-service
+kubectl rollout status deployment/payment-service-deployment
 ```
 
 ---
