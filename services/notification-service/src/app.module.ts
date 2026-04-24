@@ -5,7 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmailModule } from './email/email.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { Notification } from './notifications/entities/notification.entity';
+import { Notification } from './entities/notification.entity';
 
 @Module({
   imports: [
