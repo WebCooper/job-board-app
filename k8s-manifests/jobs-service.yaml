@@ -18,9 +18,14 @@ spec:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "jobs-role"
         vault.hashicorp.com/agent-inject-secret-database: "secret/data/jobs-service"
+        vault.hashicorp.com/agent-inject-secret-redis: "secret/data/jobs-service"
         vault.hashicorp.com/agent-inject-template-database: |
           {{- with secret "secret/data/jobs-service" -}}
           {{ .Data.data.DATABASE_URL }}
+          {{- end }}
+        vault.hashicorp.com/agent-inject-template-redis: |
+          {{- with secret "secret/data/jobs-service" -}}
+          {{ .Data.data.REDIS_URL }}
           {{- end }}
     spec:
       serviceAccountName: jobs-service-sa

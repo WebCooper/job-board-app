@@ -1,9 +1,57 @@
 const express = require('express');
+const crypto = require('crypto');
+const fs = require('fs');
+const { createClient } = require('redis');
 const { initDB, getJobRepository } = require('./db');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+
+const CACHE_TTL_SECONDS = 300;
+const CACHE_KEY_PREFIX = 'jobs:search:';
+const vaultRedisSecretPath = '/vault/secrets/redis';
+let redisClient = null;
+
+const getRedisUrl = () => {
+    if (fs.existsSync(vaultRedisSecretPath)) {
+        const redisUrl = fs.readFileSync(vaultRedisSecretPath, 'utf8').trim();
+        if (redisUrl) return redisUrl;
+    }
+    return process.env.REDIS_URL || null;
+};
+
+const buildSearchCacheKey = (query) => {
+    const queryHash = crypto.createHash('sha256').update(query).digest('hex');
+    return `${CACHE_KEY_PREFIX}${queryHash}`;
+};
+
+const invalidateSearchCache = async () => {
+    if (!redisClient || !redisClient.isOpen) return;
+    let cursor = '0';
+    do {
+        const result = await redisClient.scan(cursor, { MATCH: `${CACHE_KEY_PREFIX}*`, COUNT: 100 });
+        cursor = result.cursor;
+        if (result.keys.length > 0) {
+            await redisClient.del(result.keys);
+        }
+    } while (cursor !== '0');
+};
+
+const connectRedis = async () => {
+    const redisUrl = getRedisUrl();
+    if (!redisUrl) {
+        console.warn('Redis URL not found in Vault secret or REDIS_URL env; caching disabled.');
+        return;
+    }
+
+    redisClient = createClient({ url: redisUrl });
+    redisClient.on('error', (err) => {
+        console.error('Redis client error:', err.message);
+    });
+    await redisClient.connect();
+    console.log('Redis connected for jobs search caching');
+};
 
 // 1. Create Draft Job
 app.post('/api/v1/jobs', async (req, res) => {
@@ -19,9 +67,56 @@ app.post('/api/v1/jobs', async (req, res) => {
             status: 'DRAFT'
         });
         const savedJob = await jobRepository.save(job);
+        await invalidateSearchCache();
         res.status(201).json(savedJob);
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// 1a. Search Published Jobs (cached in Redis for 5 minutes)
+app.get('/api/v1/jobs/search', async (req, res) => {
+    const query = (req.query.q || '').toString().trim();
+    if (!query) {
+        return res.status(400).json({ error: 'Query parameter q is required' });
+    }
+
+    const cacheKey = buildSearchCacheKey(query.toLowerCase());
+    const start = process.hrtime.bigint();
+
+    try {
+        if (redisClient && redisClient.isOpen) {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+                return res.status(200).json({
+                    source: 'cache',
+                    duration_ms: Number(durationMs.toFixed(2)),
+                    data: JSON.parse(cached)
+                });
+            }
+        }
+
+        const jobRepository = getJobRepository();
+        const jobs = await jobRepository
+            .createQueryBuilder('job')
+            .where('job.status = :status', { status: 'PUBLISHED' })
+            .andWhere('(job.title ILIKE :query OR job.description ILIKE :query)', { query: `%${query}%` })
+            .orderBy('job.created_at', 'DESC')
+            .getMany();
+
+        if (redisClient && redisClient.isOpen) {
+            await redisClient.set(cacheKey, JSON.stringify(jobs), { EX: CACHE_TTL_SECONDS });
+        }
+
+        const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+        return res.status(200).json({
+            source: 'database',
+            duration_ms: Number(durationMs.toFixed(2)),
+            data: jobs
+        });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
     }
 });
 
@@ -34,6 +129,7 @@ app.put('/api/v1/jobs/:id/publish', async (req, res) => {
 
         existingJob.status = 'PUBLISHED';
         const updatedJob = await jobRepository.save(existingJob);
+        await invalidateSearchCache();
         res.status(200).json(updatedJob);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -45,6 +141,7 @@ app.delete('/api/v1/jobs/:id', async (req, res) => {
     try {
         const jobRepository = getJobRepository();
         await jobRepository.delete({ id: req.params.id });
+        await invalidateSearchCache();
         res.status(204).send();
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -59,7 +156,8 @@ app.get('/health', (req, res) => {
 
 
 const PORT = process.env.PORT || 3002;
-initDB().then(() => {
+initDB().then(async () => {
+    await connectRedis();
     app.listen(PORT, () => console.log(`Jobs Service running on port ${PORT}`));
 }).catch((error) => {
     console.error('Failed to initialize jobs-service database:', error.message);

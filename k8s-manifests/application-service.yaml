@@ -13,6 +13,7 @@ spec:
     metadata:
       labels:
         app: application-service
+        app.kubernetes.io/name: application-service
       annotations:
         traffic.sidecar.istio.io/excludeOutboundPorts: "8200"
         vault.hashicorp.com/agent-inject: "true"
@@ -26,20 +27,24 @@ spec:
       serviceAccountName: application-service-sa
       containers:
       - name: application-service
-        image: hashicorp/http-echo:latest
+        image: chamudithak/application-service:2026.04.24.12
+        command: ["/bin/sh", "-c"]
         args:
-          - "-text=Hello from the Application Service (Saga Orchestrator)!"
+          - export DATABASE_URL="$(tr -d '\r\n' < /vault/secrets/database)"; until node index.js; do echo "application-service startup failed, retrying in 5s"; sleep 5; done
+        env:
+        - name: PORT
+          value: "3003"
         ports:
-        - containerPort: 5678
+        - containerPort: 3003
         startupProbe:
           tcpSocket:
-            port: 5678
+            port: 3003
           failureThreshold: 30
           periodSeconds: 3
           timeoutSeconds: 2
         readinessProbe:
           tcpSocket:
-            port: 5678
+            port: 3003
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 2
@@ -62,5 +67,5 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 5678
+      targetPort: 3003
   type: ClusterIP
