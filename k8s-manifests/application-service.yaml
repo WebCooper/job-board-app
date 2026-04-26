@@ -18,10 +18,12 @@ spec:
         traffic.sidecar.istio.io/excludeOutboundPorts: "8200"
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "application-role"
-        vault.hashicorp.com/agent-inject-secret-database: "secret/data/application-service"
-        vault.hashicorp.com/agent-inject-template-database: |
+        vault.hashicorp.com/agent-inject-secret-config: "secret/data/application-service"
+        vault.hashicorp.com/agent-inject-template-config: |
           {{- with secret "secret/data/application-service" -}}
-          {{ .Data.data.DATABASE_URL }}
+          export DATABASE_URL="{{ .Data.data.DATABASE_URL }}"
+          export JOBS_SERVICE_URL="{{ .Data.data.JOBS_SERVICE_URL }}"
+          export PAYMENT_SERVICE_URL="{{ .Data.data.PAYMENT_SERVICE_URL }}"
           {{- end }}
     spec:
       serviceAccountName: application-service-sa
@@ -30,7 +32,7 @@ spec:
         image: chamudithak/application-service:2026.04.24.12
         command: ["/bin/sh", "-c"]
         args:
-          - export DATABASE_URL="$(tr -d '\r\n' < /vault/secrets/database)"; until node index.js; do echo "application-service startup failed, retrying in 5s"; sleep 5; done
+          - . /vault/secrets/config && until node index.js; do echo "application-service startup failed, retrying in 5s"; sleep 5; done
         env:
         - name: PORT
           value: "3003"

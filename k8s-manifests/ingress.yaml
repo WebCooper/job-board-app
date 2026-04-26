@@ -38,7 +38,7 @@ spec:
             name: payment-service
             port:
               number: 80
-      - path: /api/v1/applications
+      - path: /api/v1/application
         pathType: Prefix
         backend:
           service:

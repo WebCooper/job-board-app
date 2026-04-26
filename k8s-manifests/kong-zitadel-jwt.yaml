@@ -7,7 +7,7 @@ metadata:
   namespace: default
 stringData:
   kongCredType: jwt
-  key: "https://<your-zitadel-domain>"
+  key: "https://REPLACE_WITH_ZITADEL_ISSUER_URL"
   algorithm: RS256
   rsa_public_key: |
     -----BEGIN PUBLIC KEY-----

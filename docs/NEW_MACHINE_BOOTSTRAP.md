@@ -79,7 +79,7 @@ Create secrets (DB + Redis for jobs):
 kubectl exec vault-0 -- sh -c 'vault kv put secret/jobs-service DATABASE_URL=postgresql://jobs_admin:jobs_password@postgres-jobs:5432/jobs_db REDIS_URL=redis://redis:6379'
 kubectl exec vault-0 -- sh -c 'vault kv put secret/user-service DATABASE_URL=postgresql://user_admin:user_password@postgres-user:5432/users_db'
 kubectl exec vault-0 -- sh -c 'vault kv put secret/payment-service DATABASE_URL=postgresql://payment_admin:payment_password@postgres-payment:5432/payment_db'
-kubectl exec vault-0 -- sh -c 'vault kv put secret/application-service DATABASE_URL=postgresql://app_admin:app_password@postgres-application:5432/application_db'
+kubectl exec vault-0 -- sh -c 'vault kv put secret/application-service DATABASE_URL=postgresql://app_admin:app_password@postgres-application:5432/application_db JOBS_SERVICE_URL=http://jobs-service PAYMENT_SERVICE_URL=http://payment-service'
 kubectl exec vault-0 -- sh -c 'vault kv put secret/notification-service DB_HOST=postgres-notifications DB_PORT=5432 DB_USER=notif_admin DB_PASSWORD=notif_password DB_NAME=notif_db'
 ```
 
