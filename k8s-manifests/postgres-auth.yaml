@@ -1,0 +1,73 @@
+# PostgreSQL for Auth Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-auth
+  template:
+    metadata:
+      labels:
+        app: postgres-auth
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        env:
+        - name: POSTGRES_USER
+          value: "auth_admin"
+        - name: POSTGRES_PASSWORD
+          value: "auth_password"
+        - name: POSTGRES_DB
+          value: "auth_db"
+        - name: POSTGRES_INITDB_ARGS
+          value: >-
+            -c shared_preload_libraries=pg_stat_statements
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: init-db
+          mountPath: /docker-entrypoint-initdb.d
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U auth_admin -d auth_db
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: init-db
+        configMap:
+          name: auth-db-init
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-db-init
+data:
+  01-init.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        auth0_sub VARCHAR(255) UNIQUE NOT NULL,
+        role VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-auth
+spec:
+  selector:
+    app: postgres-auth
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP

@@ -46,8 +46,9 @@ func main() {
 
 	// Create the GRPC server and provide the necessary interceptors
 	registry := tenant.NewRegistry(map[string]string{
-		"acme-corp": "zitadel-org-id-abc123",
-		"globex":    "zitadel-org-id-def456",
+		"acme-corp":  "370430918701100794",
+		"globex":     "370430958865770291",
+		"candidates": "370432677339227955",
 	})
 
 	serverOptions := []grpc.ServerOption{

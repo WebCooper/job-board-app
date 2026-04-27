@@ -1,0 +1,231 @@
+.app-shell {
+  max-width: 1080px;
+  margin: 1.2rem auto;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.topbar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, #f7fbfa 0%, #eef8f5 100%);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #0f9f92, #0b7f74);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45);
+}
+
+.brand h1 {
+  margin: 0;
+  line-height: 1.15;
+  font-size: 1.1rem;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+}
+
+.brand-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-ink);
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.85rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  padding: 0.4rem 0.7rem;
+  border-radius: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.nav-links a:hover {
+  background: #e5f2ef;
+  color: var(--text);
+}
+
+.auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.welcome-text {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.btn {
+  border: 1px solid transparent;
+  border-radius: 11px;
+  padding: 0.52rem 0.9rem;
+  font-weight: 700;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 8px 20px rgba(11, 127, 116, 0.3);
+}
+
+.btn-ghost {
+  border-color: var(--border);
+  background: #fff;
+}
+
+.content {
+  padding: 1.3rem;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #fbfdfd);
+  padding: 1.2rem;
+}
+
+.panel-header {
+  margin-bottom: 1rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+}
+
+.panel-header p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+}
+
+.jobs-grid,
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.job-card,
+.info-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.95rem;
+  background: #fff;
+}
+
+.job-card h3,
+.info-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.job-card p,
+.info-card p {
+  margin: 0.45rem 0;
+  color: var(--muted);
+}
+
+.job-card span {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--brand-ink);
+}
+
+.app-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+  color: var(--brand-ink);
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .jobs-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.auth-demo {
+  max-width: 720px;
+  margin: 3rem auto;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.auth-demo h1 {
+  margin-top: 0;
+  font-family: 'Space Grotesk', 'Manrope', sans-serif;
+}
+
+.status-line {
+  margin-top: 0;
+  color: var(--muted);
+}
+
+.auth-demo pre {
+  overflow: auto;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #f7fbfa;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.error-text {
+  color: #b42318;
+}

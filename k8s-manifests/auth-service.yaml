@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-service-sa
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service-deployment
+  labels:
+    app: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      serviceAccountName: auth-service-sa
+      containers:
+      - name: auth-service
+        image: chamudithak/auth-service:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PORT
+          value: "3001"
+        - name: NODE_ENV
+          value: "production"
+        - name: DB_HOST
+          value: "postgres-auth"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: "auth_admin"
+        - name: DB_PASSWORD
+          value: "auth_password"
+        - name: DB_NAME
+          value: "auth_db"
+        ports:
+        - containerPort: 3001
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          failureThreshold: 30
+          periodSeconds: 3
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3001
+  type: ClusterIP
