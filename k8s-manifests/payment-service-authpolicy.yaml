@@ -1,0 +1,13 @@
+---
+# Allow Kong gateway (without sidecar) to access payment-service
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: payment-service-permissive
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: payment-service
+  mtls:
+    mode: PERMISSIVE
