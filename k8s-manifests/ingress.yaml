@@ -5,7 +5,7 @@ metadata:
   namespace: default
   annotations:
     kubernetes.io/ingress.class: kong
-    konghq.com/plugins: global-rate-limit,request-logging
+    konghq.com/plugins: global-rate-limit,request-logging,zitadel-jwt
 spec:
   rules:
   - http:
