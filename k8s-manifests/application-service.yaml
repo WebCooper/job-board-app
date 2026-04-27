@@ -29,7 +29,7 @@ spec:
       serviceAccountName: application-service-sa
       containers:
       - name: application-service
-        image: chamudithak/application-service:2026.04.24.12
+        image: chamudithak/application-service:2026.04.27.20
         command: ["/bin/sh", "-c"]
         args:
           - . /vault/secrets/config && until node index.js; do echo "application-service startup failed, retrying in 5s"; sleep 5; done

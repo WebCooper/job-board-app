@@ -19,12 +19,14 @@ export function Navigation({ onNavigate, currentPage, userProfile }) {
             >
               Browse Jobs
             </button>
-            <button
-              className={`nav-link ${currentPage === 'applications' ? 'active' : ''}`}
-              onClick={() => onNavigate('applications')}
-            >
-              My Applications
-            </button>
+            {userProfile?.role !== 'employer' && (
+              <button
+                className={`nav-link ${currentPage === 'applications' ? 'active' : ''}`}
+                onClick={() => onNavigate('applications')}
+              >
+                My Applications
+              </button>
+            )}
             {userProfile?.role === 'employer' && (
               <button
                 className={`nav-link ${currentPage === 'post-job' ? 'active' : ''}`}

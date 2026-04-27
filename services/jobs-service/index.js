@@ -26,6 +26,12 @@ const buildSearchCacheKey = (query) => {
     return `${CACHE_KEY_PREFIX}${queryHash}`;
 };
 
+const buildV2SearchCacheKey = (query, page, limit, salaryRange) => {
+    const raw = `${query}|${page}|${limit}|${salaryRange?.min || ''}|${salaryRange?.max || ''}`;
+    const hash = crypto.createHash('sha256').update(raw).digest('hex');
+    return `${CACHE_KEY_PREFIX}v2:${hash}`;
+};
+
 const invalidateSearchCache = async () => {
     if (!redisClient || !redisClient.isOpen) return;
     let cursor = '0';
@@ -87,12 +93,13 @@ app.get('/api/v1/jobs', async (_req, res) => {
     }
 });
 
-// v2: Listing with salary_range filter + pagination metadata
+// v2: Listing with search query, salary_range filter + pagination metadata + Redis caching
 app.get('/api/v2/jobs', async (req, res) => {
     try {
         const page = parsePositiveInt(req.query.page, 1);
         const limit = Math.min(parsePositiveInt(req.query.limit, 10), 100);
         const salaryRange = parseSalaryRange(req.query);
+        const query = (req.query.q || '').toString().trim();
 
         if (req.query.salary_range && !salaryRange) {
             return res.status(400).json({
@@ -100,10 +107,28 @@ app.get('/api/v2/jobs', async (req, res) => {
             });
         }
 
+        const cacheKey = buildV2SearchCacheKey(query.toLowerCase(), page, limit, salaryRange);
+        const start = process.hrtime.bigint();
+
+        if (redisClient && redisClient.isOpen) {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+                const cachedData = JSON.parse(cached);
+                cachedData.source = 'cache';
+                cachedData.duration_ms = Number(durationMs.toFixed(2));
+                return res.status(200).json(cachedData);
+            }
+        }
+
         const jobRepository = getJobRepository();
         let qb = jobRepository
             .createQueryBuilder('job')
             .where('job.status = :status', { status: 'PUBLISHED' });
+
+        if (query) {
+            qb = qb.andWhere('(job.title ILIKE :query OR job.description ILIKE :query)', { query: `%${query}%` });
+        }
 
         if (salaryRange) {
             qb = qb.andWhere(
@@ -122,7 +147,7 @@ app.get('/api/v2/jobs', async (req, res) => {
             .take(limit)
             .getMany();
 
-        return res.status(200).json({
+        const responseData = {
             data: jobs,
             meta: {
                 page,
@@ -133,9 +158,20 @@ app.get('/api/v2/jobs', async (req, res) => {
                 has_prev: page > 1
             },
             filters: {
+                q: query || null,
                 salary_range: salaryRange ? `${salaryRange.min}-${salaryRange.max}` : null
             }
-        });
+        };
+
+        if (redisClient && redisClient.isOpen) {
+            await redisClient.set(cacheKey, JSON.stringify(responseData), { EX: CACHE_TTL_SECONDS });
+        }
+
+        const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+        responseData.source = 'database';
+        responseData.duration_ms = Number(durationMs.toFixed(2));
+
+        return res.status(200).json(responseData);
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
