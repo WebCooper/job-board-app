@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_GATEWAY_URL,
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8000',
 });
 
 let interceptorRegistered = false;
@@ -18,7 +18,7 @@ export const setupInterceptor = (getAccessTokenSilently) => {
         const token = await getAccessTokenSilently();
         config.headers.Authorization = `Bearer ${token}`;
       } catch (_error) {
-        console.log('No token available or user not logged in. Sending request without token.');
+        console.warn('No token available. Request will be sent anonymously.');
       }
 
       return config;

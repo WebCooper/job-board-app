@@ -23,7 +23,7 @@ spec:
       serviceAccountName: auth-service-sa
       containers:
       - name: auth-service
-        image: chamudithak/auth-service:latest
+        image: chamudithak/auth-service:2026.04.27.18
         imagePullPolicy: IfNotPresent
         env:
         - name: PORT

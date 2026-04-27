@@ -1,0 +1,13 @@
+---
+# Allow both plain HTTP and mTLS for auth-service to enable Kong access
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: auth-service-permissive
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  mtls:
+    mode: PERMISSIVE
