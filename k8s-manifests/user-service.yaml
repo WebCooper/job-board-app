@@ -31,7 +31,7 @@ spec:
       serviceAccountName: user-service-sa
       containers:
       - name: user-service
-        image: chamudithak/user-service:2026.04.26.14
+        image: chamudithak/user-service:2026.04.27.17
         command: ["/bin/sh", "-c"]
         args:
           - . /vault/secrets/config && DOMAIN="${ZITADEL_DOMAIN#https://}" && DOMAIN="${DOMAIN#http://}" && DOMAIN="${DOMAIN#https//}" && DOMAIN="${DOMAIN#http//}" && exec ./user-service -domain "$DOMAIN" -key "/vault/secrets/zitadel-key.json" -port "8089"
