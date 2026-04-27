@@ -200,7 +200,6 @@ Authorization checks are declared in `internal/handlers/server.go` as a map from
 
 ```go
 Checks = map[string][]authorization.CheckOption{
-    proto.AuthService_Healthz_FullMethodName:   nil,             // public
     proto.AuthService_ListTasks_FullMethodName: nil,             // any valid token
     proto.AuthService_AddTask_FullMethodName:   {authorization.WithRole("admin")},
     proto.AuthService_AddTasks_FullMethodName:  {authorization.WithRole("admin")},

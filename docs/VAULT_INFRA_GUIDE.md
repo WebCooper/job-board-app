@@ -102,6 +102,22 @@ kubectl get pods -o wide
 kubectl describe deployment payment-service-deployment
 ```
 
+### Service Configuration (Notification Service)
+```powershell
+# Store Database + Resend Secrets
+kubectl exec vault-0 -- sh -c 'vault kv put secret/notification-service DB_HOST=postgres-notifications DB_PORT=5432 DB_USER=notif_admin DB_PASSWORD=notif_password DB_NAME=notif_db RESEND_API_KEY=re_hURia8at_JN3LVUcniq2Qd5EyhwEMjti3 RESEND_FROM="Zyncoraa Tickets <tickets@updates.zyncoraa.com>"'
+
+# Create Policy
+kubectl exec vault-0 -- sh -c 'printf "path \"secret/data/notification-service\" {\n  capabilities = [\"read\"]\n}\n" > /tmp/notification-policy.hcl; vault policy write notification-policy /tmp/notification-policy.hcl'
+
+# Create Role for Service Account
+kubectl exec vault-0 -- sh -c 'vault write auth/kubernetes/role/notification-role \
+   bound_service_account_names=notification-service-sa \
+   bound_service_account_namespaces=default \
+   policies=notification-policy \
+   ttl=24h'
+```
+
 ### Troubleshooting: invalid audience (aud) claim
 If payment pods are stuck during Vault init and logs show:
 

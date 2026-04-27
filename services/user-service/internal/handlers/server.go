@@ -25,7 +25,6 @@ var (
 	// If an endpoint (e.g. [proto.AuthService_Healthz_FullMethodName]) is not added to the list, it will be publicly accessible.
 	// By adding specific [authorization.CheckOption], additional requirements like role checks ([authorization.WithRole]) can be defined.
 	Checks = map[string][]authorization.CheckOption{
-		proto.AuthService_Healthz_FullMethodName:   nil,
 		proto.AuthService_AddTask_FullMethodName:   {authorization.WithRole("admin")},
 		proto.AuthService_AddTasks_FullMethodName:  {authorization.WithRole("admin")},
 		proto.AuthService_ListTasks_FullMethodName: nil, // requires valid token, no role

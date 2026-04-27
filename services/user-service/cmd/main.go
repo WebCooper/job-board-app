@@ -73,6 +73,7 @@ func main() {
 		slog.Error("creating listener failed", "error", err)
 		os.Exit(1)
 	}
+	slog.Info("gRPC server listening", "addr", lis.Addr().String())
 	err = grpcServer.Serve(lis)
 	if err != nil {
 		slog.Error("server terminated", "error", err)
