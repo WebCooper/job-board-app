@@ -85,6 +85,30 @@ Possible outcomes:
 - `402 Payment Required`: Payment failed, compensation deleted draft job, saga state becomes `ROLLED_BACK`
 - `500 Internal Server Error`: Unexpected failure in orchestration or downstream services
 
+## Candidate API
+* `POST /api/v1/application/apply` - Submit a job application for a published job.
+
+Example request:
+
+```bash
+curl -X POST http://localhost:3003/api/v1/application/apply \
+	-H "Content-Type: application/json" \
+	-d '{
+		"jobId": "38430fe9-4415-492b-a11d-0e026eb9b36b",
+		"candidateId": 1,
+		"resume": "sdgasg",
+		"coverLetter": "sdgsadf",
+		"phoneNumber": "gferg",
+		"preferredStartDate": "2026-04-30"
+	}'
+```
+
+Possible outcomes:
+- `201 Created`: Application stored successfully.
+- `400 Bad Request`: Required fields are missing or the date format is invalid.
+- `404 Not Found`: The referenced job is not published or does not exist.
+- `500 Internal Server Error`: Unexpected failure while validating or saving the application.
+
 ## Local End-to-End Flow
 1. Start PostgreSQL databases for all three services.
 2. Start `jobs-service`.

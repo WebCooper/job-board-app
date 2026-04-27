@@ -9,6 +9,88 @@ app.use(express.json());
 const JOBS_SERVICE_URL = process.env.JOBS_SERVICE_URL;
 const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL;
 
+const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
+
+const isValidDateString = (value) => {
+    if (!isNonEmptyString(value)) {
+        return false;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false;
+    }
+
+    return !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+};
+
+const mapApplicationResponse = (application) => ({
+    id: application.id,
+    jobId: application.job_id,
+    candidateId: application.candidate_id,
+    status: application.status,
+    createdAt: application.created_at
+});
+
+app.post('/api/v1/application/apply', async (req, res) => {
+    const { jobId, candidateId, resume, coverLetter, phoneNumber, preferredStartDate } = req.body;
+
+    if (!isNonEmptyString(jobId)) {
+        return res.status(400).json({ error: 'jobId is required' });
+    }
+
+    if (candidateId === undefined || candidateId === null || `${candidateId}`.trim() === '') {
+        return res.status(400).json({ error: 'candidateId is required' });
+    }
+
+    if (!isNonEmptyString(resume)) {
+        return res.status(400).json({ error: 'resume is required' });
+    }
+
+    if (!isNonEmptyString(phoneNumber)) {
+        return res.status(400).json({ error: 'phoneNumber is required' });
+    }
+
+    if (preferredStartDate && !isValidDateString(preferredStartDate)) {
+        return res.status(400).json({ error: 'preferredStartDate must use YYYY-MM-DD format' });
+    }
+
+    try {
+        const jobsResponse = await axios.get(`${JOBS_SERVICE_URL}/api/v1/jobs`);
+        const matchingJob = Array.isArray(jobsResponse.data)
+            ? jobsResponse.data.find((job) => `${job.id}` === `${jobId}`)
+            : null;
+
+        if (!matchingJob) {
+            return res.status(404).json({
+                error: 'JOB_NOT_FOUND',
+                message: `Published job ${jobId} was not found.`
+            });
+        }
+
+        const applicationRepository = getApplicationRepository();
+        const application = applicationRepository.create({
+            job_id: `${jobId}`,
+            candidate_id: `${candidateId}`,
+            resume: resume.trim(),
+            cover_letter: isNonEmptyString(coverLetter) ? coverLetter.trim() : null,
+            phone_number: phoneNumber.trim(),
+            preferred_start_date: preferredStartDate || null,
+            status: 'SUBMITTED',
+            saga_state: 'SUBMITTED'
+        });
+
+        const savedApplication = await applicationRepository.save(application);
+
+        return res.status(201).json(mapApplicationResponse(savedApplication));
+    } catch (error) {
+        console.error('Application submission failed:', error.message);
+        return res.status(500).json({
+            error: 'APPLICATION_SUBMISSION_FAILED',
+            message: error.response ? error.response.data : error.message
+        });
+    }
+});
+
 // The Saga Orchestrator Endpoint
 app.post('/api/v1/application/post-job', async (req, res) => {
     const { employer_id, job_details, payment_details } = req.body;

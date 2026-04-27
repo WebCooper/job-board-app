@@ -19,6 +19,22 @@ const ApplicationEntity = new EntitySchema({
             length: 255,
             nullable: true
         },
+        resume: {
+            type: 'text',
+            nullable: true
+        },
+        cover_letter: {
+            type: 'text',
+            nullable: true
+        },
+        phone_number: {
+            type: 'text',
+            nullable: true
+        },
+        preferred_start_date: {
+            type: 'date',
+            nullable: true
+        },
         status: {
             type: String,
             length: 50,
