@@ -11,36 +11,46 @@ export function JobListings({ onSelectJob, userProfile }) {
     location: '',
     jobType: ''
   });
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState(null);
 
   useEffect(() => {
-    fetchJobs();
-  }, [filters]);
+    const timer = setTimeout(() => {
+      fetchJobs();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters, page]);
 
   const fetchJobs = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch published jobs from the API
-      const response = await api.get('/api/v1/jobs');
-      const allJobs = response.data || [];
-      
-      // Filter jobs based on user inputs
-      let filtered = allJobs.filter(job => {
-        const matchesSearch = !filters.search || 
-          job.title?.toLowerCase().includes(filters.search.toLowerCase()) ||
-          job.description?.toLowerCase().includes(filters.search.toLowerCase()) ||
-          job.company?.toLowerCase().includes(filters.search.toLowerCase());
-        
-        const matchesLocation = !filters.location || 
-          job.location?.toLowerCase().includes(filters.location.toLowerCase());
-        
-        const matchesType = !filters.jobType || 
-          job.type?.toLowerCase() === filters.jobType.toLowerCase();
-        
-        return matchesSearch && matchesLocation && matchesType;
+      const response = await api.get('/api/v2/jobs', {
+        params: {
+          page: page,
+          limit: 10,
+          q: filters.search
+        }
       });
+      const data = response.data;
+      
+      let fetchedJobs = data.data || [];
+      
+      // Frontend filtering for location and type
+      if (filters.location || filters.jobType) {
+        fetchedJobs = fetchedJobs.filter(job => {
+          const matchesLocation = !filters.location || 
+            job.location?.toLowerCase().includes(filters.location.toLowerCase());
+          
+          const matchesType = !filters.jobType || 
+            job.type?.toLowerCase() === filters.jobType.toLowerCase();
+          
+          return matchesLocation && matchesType;
+        });
+      }
 
-      setJobs(filtered);
+      setJobs(fetchedJobs);
+      setMeta(data.meta);
     } catch (err) {
       console.error('Failed to fetch jobs:', err);
       setError('Failed to load job listings. Please try again later.');
@@ -55,11 +65,8 @@ export function JobListings({ onSelectJob, userProfile }) {
       ...prev,
       [name]: value
     }));
+    setPage(1);
   };
-
-  if (loading) {
-    return <div className="loading">Loading jobs...</div>;
-  }
 
   return (
     <div className="jobs-container">
@@ -101,50 +108,76 @@ export function JobListings({ onSelectJob, userProfile }) {
 
       {error && <div className="error-message">{error}</div>}
 
-      {jobs.length === 0 ? (
+      {loading ? (
+        <div className="loading">Loading jobs...</div>
+      ) : jobs.length === 0 ? (
         <div className="no-jobs">
           <p>No jobs found matching your criteria.</p>
         </div>
       ) : (
-        <div className="jobs-list">
-          {jobs.map(job => (
-            <div
-              key={job.id}
-              className="job-card"
-              onClick={() => onSelectJob(job)}
-            >
-              <div className="job-header">
-                <h3 className="job-title">{job.title}</h3>
-                <span className="job-type">{job.type || 'Full Time'}</span>
-              </div>
-              
-              <p className="job-company">{job.company}</p>
-              
-              <div className="job-meta">
-                <span className="job-location">📍 {job.location || 'Remote'}</span>
-                {job.salary && (
-                  <span className="job-salary">💰 {job.salary}</span>
-                )}
-              </div>
+        <>
+          <div className="jobs-list">
+            {jobs.map(job => (
+              <div
+                key={job.id}
+                className="job-card"
+                onClick={() => onSelectJob(job)}
+              >
+                <div className="job-header">
+                  <h3 className="job-title">{job.title}</h3>
+                  <span className="job-type">{job.type || 'Full Time'}</span>
+                </div>
+                
+                <p className="job-company">{job.company}</p>
+                
+                <div className="job-meta">
+                  <span className="job-location">📍 {job.location || 'Remote'}</span>
+                  {job.salary && (
+                    <span className="job-salary">💰 {job.salary}</span>
+                  )}
+                </div>
 
-              <p className="job-description">
-                {job.description?.substring(0, 150)}...
-              </p>
+                <p className="job-description">
+                  {job.description?.substring(0, 150)}...
+                </p>
 
-              <div className="job-footer">
-                <span className="job-date">
-                  Posted {new Date(job.createdAt).toLocaleDateString()}
-                </span>
-                <button className="btn-view" onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectJob(job);
-                }}>
-                  View Details
-                </button>
+                <div className="job-footer">
+                  <span className="job-date">
+                    Posted {new Date(job.created_at || job.createdAt).toLocaleDateString()}
+                  </span>
+                  <button className="btn-view" onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectJob(job);
+                  }}>
+                    View Details
+                  </button>
+                </div>
               </div>
+            ))}
+          </div>
+          
+          {meta && meta.total_pages > 1 && (
+            <div className="pagination">
+              <button 
+                disabled={!meta.has_prev} 
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="btn-pagination"
+              >
+                Previous
+              </button>
+              <span className="page-info">
+                Page {meta.page} of {meta.total_pages}
+              </span>
+              <button 
+                disabled={!meta.has_next} 
+                onClick={() => setPage(p => p + 1)}
+                className="btn-pagination"
+              >
+                Next
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

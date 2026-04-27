@@ -6,8 +6,13 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
-const JOBS_SERVICE_URL = process.env.JOBS_SERVICE_URL;
-const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL;
+const JOBS_SERVICE_URL = process.env.JOBS_SERVICE_URL && process.env.JOBS_SERVICE_URL !== '<no value>'
+    ? process.env.JOBS_SERVICE_URL
+    : 'http://jobs-service';
+
+const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL && process.env.PAYMENT_SERVICE_URL !== '<no value>'
+    ? process.env.PAYMENT_SERVICE_URL
+    : 'http://payment-service';
 
 const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
 
