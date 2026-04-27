@@ -55,6 +55,7 @@ helm install kong kong/ingress -n kong --create-namespace
 3. Apply ingress routes:
 
 ```bash
+kubectl apply -f kong-zitadel-jwt.yaml
 kubectl apply -f ingress.yaml
 ```
 
@@ -63,6 +64,8 @@ kubectl apply -f ingress.yaml
 ```bash
 kubectl port-forward -n kong svc/kong-gateway-proxy 8000:80
 ```
+
+The user-service auth endpoint is exposed through the service on port 80 and the container listens on 8089. Keep that port mapping aligned if you rebuild the manifest.
 
 ## Phase 3: Istio Service Mesh
 

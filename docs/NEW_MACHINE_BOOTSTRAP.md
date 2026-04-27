@@ -68,20 +68,34 @@ $env:VAULT_TOKEN="<YOUR_ROOT_TOKEN>"
 Enable engines/auth (idempotent in practice; ignore "already enabled" messages):
 
 ```powershell
+kubectl exec vault-0 -- vault login <your key>
 kubectl exec vault-0 -- sh -c 'vault secrets enable -path=secret kv-v2'
 kubectl exec vault-0 -- sh -c 'vault auth enable kubernetes'
-kubectl exec vault-0 -- sh -c 'vault write auth/kubernetes/config kubernetes_host="https://kubernetes.default.svc" token_reviewer_jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+kubectl exec vault-0 -- sh -c '
+vault write auth/kubernetes/config \
+  kubernetes_host="https://kubernetes.default.svc" \
+  token_reviewer_jwt=@/var/run/secrets/kubernetes.io/serviceaccount/token \
+  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+'
+```
+
+Prepare Zitadel service-account key for user-service:
+
+```powershell
+kubectl cp .\370329703233363376.json vault-0:/tmp/key.json
 ```
 
 Create secrets (DB + Redis for jobs):
 
 ```powershell
 kubectl exec vault-0 -- sh -c 'vault kv put secret/jobs-service DATABASE_URL=postgresql://jobs_admin:jobs_password@postgres-jobs:5432/jobs_db REDIS_URL=redis://redis:6379'
-kubectl exec vault-0 -- sh -c 'vault kv put secret/user-service DATABASE_URL=postgresql://user_admin:user_password@postgres-user:5432/users_db'
+kubectl exec vault-0 -- sh -c 'vault kv put secret/user-service DATABASE_URL=postgresql://user_admin:user_password@postgres-user:5432/users_db ZITADEL_DOMAIN=<your-zitadel-domain> ZITADEL_KEY_JSON=@/tmp/key.json'
 kubectl exec vault-0 -- sh -c 'vault kv put secret/payment-service DATABASE_URL=postgresql://payment_admin:payment_password@postgres-payment:5432/payment_db'
 kubectl exec vault-0 -- sh -c 'vault kv put secret/application-service DATABASE_URL=postgresql://app_admin:app_password@postgres-application:5432/application_db JOBS_SERVICE_URL=http://jobs-service PAYMENT_SERVICE_URL=http://payment-service'
 kubectl exec vault-0 -- sh -c 'vault kv put secret/notification-service DB_HOST=postgres-notifications DB_PORT=5432 DB_USER=notif_admin DB_PASSWORD=notif_password DB_NAME=notif_db'
 ```
+
+For `user-service`, set `ZITADEL_DOMAIN` as host only (example: `dev-environment-tcw7bu.us1.zitadel.cloud`). Do not include protocol prefixes like `https://`.
 
 Create policies:
 
@@ -143,6 +157,9 @@ kubectl rollout restart deployment/notification-service-deployment
 
 ---
 
+## 5.1) Add Secrets to vault
+
+
 ## 5) Verify rollout and secret injection
 
 ```powershell
@@ -162,7 +179,7 @@ $jobsPod = kubectl get pod -l app=jobs-service -o jsonpath="{.items[0].metadata.
 kubectl exec $jobsPod -c vault-agent -- sh -c "cat /vault/secrets/database && echo '---' && cat /vault/secrets/redis"
 
 $userPod = kubectl get pod -l app=user-service -o jsonpath="{.items[0].metadata.name}"
-kubectl exec $userPod -c vault-agent -- sh -c "cat /vault/secrets/database"
+kubectl exec $userPod -c vault-agent -- sh -c "cat /vault/secrets/config && echo '---' && sed -n '1,40p' /vault/secrets/zitadel-key.json"
 
 $payPod = kubectl get pod -l app=payment-service -o jsonpath="{.items[0].metadata.name}"
 kubectl exec $payPod -c vault-agent -- sh -c "cat /vault/secrets/database"
@@ -197,6 +214,7 @@ kubectl exec vault-0 -- vault operator unseal <KEY_1>
 kubectl exec vault-0 -- vault operator unseal <KEY_2>
 kubectl exec vault-0 -- vault operator unseal <KEY_3>
 
+kubectl rollout restart deployment/user-service-deployment
 kubectl rollout restart deployment/jobs-service-deployment
 kubectl rollout restart deployment/payment-service-deployment
 kubectl rollout restart deployment/application-service-deployment

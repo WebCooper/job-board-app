@@ -26,6 +26,7 @@ Apply plugins and ingress:
 
 ```powershell
 kubectl apply -f k8s-manifests/kong-plugins.yaml
+kubectl apply -f k8s-manifests/kong-zitadel-jwt.yaml
 kubectl apply -f k8s-manifests/ingress.yaml
 ```
 
@@ -57,6 +58,8 @@ Then re-apply ingress:
 ```powershell
 kubectl apply -f k8s-manifests/ingress.yaml
 ```
+
+Once applied, requests to `/api/v1/users`, `/api/v1/jobs`, `/api/v1/payments`, and `/api/v1/application` must include a valid Zitadel bearer token before Kong forwards them upstream.
 
 ## 4) API versioning at gateway
 

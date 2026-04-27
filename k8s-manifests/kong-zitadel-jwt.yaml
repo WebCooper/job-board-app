@@ -7,11 +7,17 @@ metadata:
   namespace: default
 stringData:
   kongCredType: jwt
-  key: "https://REPLACE_WITH_ZITADEL_ISSUER_URL"
+  key: "https://dev-environment-tcw7bu.us1.zitadel.cloud"
   algorithm: RS256
   rsa_public_key: |
     -----BEGIN PUBLIC KEY-----
-    REPLACE_WITH_ZITADEL_RS256_PUBLIC_KEY
+    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0DfPFTNYiTPDAUCu9ebH
+    vQdoN/DRUM4/diXPu3Uh7ysGZdAiRzWgIszU/j4VB39mL3gJLon+TG5G2BqPka3t
+    UG0YBh3LPxiJ07t8Iza/tQjLVUwoh4A2+z9eHBi7BAappp+/qOIzcH60k7pYhAtE
+    MyO7xh2lRkpedJDoAssNh5yFwMzdc5ixkjSPXMYy/dSIQJaAK/N78uLJBXlMBXYx
+    /hubwC96Hxrala54jAp5MJ7mB7a9zbqfZaOAHwhbHBukk2lKYWk6XK5rxj7+rmjU
+    eQ5MHBdbB4TkuFCrd2IQ15fGOMiCkNZo7yKby3tjWM9JWR10zgW5WHmZ1ezkjZN0
+    BwIDAQAB
     -----END PUBLIC KEY-----
 ---
 apiVersion: configuration.konghq.com/v1

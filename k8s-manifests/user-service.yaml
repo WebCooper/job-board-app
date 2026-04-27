@@ -17,20 +17,46 @@ spec:
         traffic.sidecar.istio.io/excludeOutboundPorts: "8200"
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "user-role"
-        vault.hashicorp.com/agent-inject-secret-database: "secret/data/user-service"
-        vault.hashicorp.com/agent-inject-template-database: |
+        vault.hashicorp.com/agent-inject-secret-config: "secret/data/user-service"
+        vault.hashicorp.com/agent-inject-secret-zitadel-key.json: "secret/data/user-service"
+        vault.hashicorp.com/agent-inject-template-config: |
           {{- with secret "secret/data/user-service" -}}
-          {{ .Data.data.DATABASE_URL }}
+          export ZITADEL_DOMAIN="{{ .Data.data.ZITADEL_DOMAIN }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-template-zitadel-key.json: |
+          {{- with secret "secret/data/user-service" -}}
+          {{ .Data.data.ZITADEL_KEY_JSON }}
           {{- end }}
     spec:
       serviceAccountName: user-service-sa
       containers:
       - name: user-service
-        image: hashicorp/http-echo:latest
+        image: chamudithak/user-service:2026.04.26.14
+        command: ["/bin/sh", "-c"]
         args:
-          - "-text=Hello from the User Service!"
+          - . /vault/secrets/config && DOMAIN="${ZITADEL_DOMAIN#https://}" && DOMAIN="${DOMAIN#http://}" && DOMAIN="${DOMAIN#https//}" && DOMAIN="${DOMAIN#http//}" && exec ./user-service -domain "$DOMAIN" -key "/vault/secrets/zitadel-key.json" -port "8089"
         ports:
-        - containerPort: 5678
+        - containerPort: 8089
+        startupProbe:
+          tcpSocket:
+            port: 8089
+          failureThreshold: 30
+          periodSeconds: 3
+          timeoutSeconds: 2
+        readinessProbe:
+          tcpSocket:
+            port: 8089
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -42,5 +68,5 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 5678
+      targetPort: 8089
   type: ClusterIP
