@@ -42,7 +42,8 @@ export class JobEventDto extends BaseEventDto {
   employerEmail: string;
 
   @IsString()
-  employerName: string;
+  @IsOptional()
+  employerName?: string;
 
   @IsNumber()
   @IsOptional()

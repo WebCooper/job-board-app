@@ -24,12 +24,14 @@ spec:
           export DATABASE_URL="{{ .Data.data.DATABASE_URL }}"
           export JOBS_SERVICE_URL="{{ .Data.data.JOBS_SERVICE_URL }}"
           export PAYMENT_SERVICE_URL="{{ .Data.data.PAYMENT_SERVICE_URL }}"
+          export RABBITMQ_URL="{{ .Data.data.RABBITMQ_URL }}"
+          export REDIS_URL="{{ .Data.data.REDIS_URL }}"
           {{- end }}
     spec:
       serviceAccountName: application-service-sa
       containers:
       - name: application-service
-        image: chamudithak/application-service:2026.04.28.24
+        image: chamudithak/application-service:2026.04.28.27
         command: ["/bin/sh", "-c"]
         args:
           - . /vault/secrets/config && until node index.js; do echo "application-service startup failed, retrying in 5s"; sleep 5; done

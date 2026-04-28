@@ -21,6 +21,7 @@ Consumes RabbitMQ events and sends transactional emails via Resend. Persists eve
 | `application.rejected` | Candidate | Status → Rejected |
 | `job.published` | Employer | Saga step 4 complete |
 | `job.payment_failed` | Employer | Saga payment failure |
+| `job.system_error` | Employer | Saga rollback/system failure |
 | `job.new_applicant` | Employer | Standalone applicant notify |
 
 ## Quick Start
@@ -46,30 +47,66 @@ On startup, the service initializes TypeORM and synchronizes the `notifications`
 
 ## Publishing an Event from other services
 
-Publish a JSON object to the `notifications` queue. The `eventType` field determines which template fires.
+Publish a Nest RMQ packet to the `notifications` queue. The event payload must be inside `data`.
 
-**Application event:**
+**Application event packet:**
 ```json
 {
-  "eventType": "application.submitted",
-  "applicationId": "uuid",
-  "jobId": "uuid",
-  "jobTitle": "Senior Engineer",
-  "candidateEmail": "candidate@example.com",
-  "candidateName": "Jane Doe",
-  "employerEmail": "hr@company.com",
-  "employerCompany": "Acme Corp"
+  "pattern": "notifications",
+  "data": {
+    "eventType": "application.submitted",
+    "applicationId": "uuid",
+    "jobId": "uuid",
+    "jobTitle": "Senior Engineer",
+    "candidateEmail": "candidate@example.com",
+    "candidateName": "Jane Doe",
+    "employerEmail": "hr@company.com",
+    "employerCompany": "Acme Corp"
+  }
 }
 ```
 
-**Job event:**
+**Job success event packet:**
 ```json
 {
-  "eventType": "job.published",
-  "jobId": "uuid",
-  "jobTitle": "Senior Engineer",
-  "employerEmail": "hr@company.com",
-  "employerName": "John Smith"
+  "pattern": "notifications",
+  "data": {
+    "eventType": "job.published",
+    "jobId": "uuid",
+    "jobTitle": "Senior Engineer",
+    "employerEmail": "hr@company.com",
+    "employerName": "John Smith"
+  }
+}
+```
+
+**Job payment failure event packet:**
+```json
+{
+  "pattern": "notifications",
+  "data": {
+    "eventType": "job.payment_failed",
+    "jobId": "uuid",
+    "jobTitle": "Senior Engineer",
+    "employerEmail": "hr@company.com",
+    "employerName": "John Smith",
+    "failureReason": "Payment declined - insufficient funds"
+  }
+}
+```
+
+**Job system error event packet:**
+```json
+{
+  "pattern": "notifications",
+  "data": {
+    "eventType": "job.system_error",
+    "jobId": "uuid",
+    "jobTitle": "Senior Engineer",
+    "employerEmail": "hr@company.com",
+    "employerName": "John Smith",
+    "failureReason": "Rollback failed during payment compensation"
+  }
 }
 ```
 

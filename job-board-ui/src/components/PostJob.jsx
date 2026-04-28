@@ -52,8 +52,14 @@ export function PostJob({ userProfile, onSuccess }) {
         setError('Salary range is required');
         return false;
       }
-      if (parseInt(formData.salaryMin) > parseInt(formData.salaryMax)) {
+      const minSal = parseInt(formData.salaryMin);
+      const maxSal = parseInt(formData.salaryMax);
+      if (minSal > maxSal) {
         setError('Minimum salary cannot be greater than maximum salary');
+        return false;
+      }
+      if (maxSal > 99999999) {
+        setError('Maximum salary exceeds allowed limit');
         return false;
       }
     }
@@ -240,6 +246,7 @@ export function PostJob({ userProfile, onSuccess }) {
                     onChange={handleInputChange}
                     placeholder="50000"
                     min="0"
+                    max="99999999"
                   />
                 </div>
                 <div className="form-group">
@@ -251,6 +258,7 @@ export function PostJob({ userProfile, onSuccess }) {
                     onChange={handleInputChange}
                     placeholder="100000"
                     min="0"
+                    max="99999999"
                   />
                 </div>
               </div>

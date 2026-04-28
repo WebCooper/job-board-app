@@ -17,6 +17,7 @@ DATABASE_URL=postgresql://app_admin:app_password@localhost:5432/applications_db
 JOBS_SERVICE_URL=http://localhost:3002
 PAYMENT_SERVICE_URL=http://localhost:3004
 RABBITMQ_URL=amqp://guest:guest@localhost:5672
+NOTIFICATION_FALLBACK_EMAIL=alerts@example.com
 ```
 
 Environment variables:
@@ -25,6 +26,7 @@ Environment variables:
 - `JOBS_SERVICE_URL`: Base URL of the Jobs Service
 - `PAYMENT_SERVICE_URL`: Base URL of the Payment Service
 - `RABBITMQ_URL`: RabbitMQ connection string (defaults to `amqp://guest:guest@localhost:5672`)
+- `NOTIFICATION_FALLBACK_EMAIL`: Fallback recipient when employer email is not provided in request payload
 
 ## Database Setup
 1. Create the database user and database (example):
@@ -70,14 +72,15 @@ curl -X POST http://localhost:3003/api/v1/application/post-job \
 	-H "Content-Type: application/json" \
 	-d '{
 		"employer_id": "emp-123",
+		"employer_email": "employer@example.com",
+		"employer_name": "Alex Employer",
 		"job_details": {
 			"title": "Backend Engineer",
 			"description": "Own and improve microservice APIs.",
 			"salary_min": 85000,
-			"salary_max": 125000
-		},
-		"payment_details": {
-			"amount": 199.99
+			"salary_max": 125000,
+			"employerEmail": "employer@example.com",
+			"employerName": "Alex Employer"
 		}
 	}'
 ```
@@ -94,9 +97,9 @@ This service publishes events to the `notifications` queue to keep the Notificat
 
 | Event Type | Trigger | Payload |
 |---|---|---|
-| `job.published` | Job successfully published after payment | `job_id`, `employer_id`, `job_title`, `amount`, `payment_status`, `saga_id` |
-| `job.payment_failed` | Payment fails during Saga Step 2 | `job_id`, `employer_id`, `saga_id`, `reason` |
-| `job.system_error` | Unexpected system error or failed rollback | `job_id`, `employer_id`, `saga_id`, `reason`, `error_details` |
+| `job.published` | Job successfully published after payment | `jobId`, `jobTitle`, `employerEmail`, `employerName`, `amount`, `sagaId` |
+| `job.payment_failed` | Payment fails during Saga Step 2 | `jobId`, `jobTitle`, `employerEmail`, `employerName`, `amount`, `failureReason`, `sagaId` |
+| `job.system_error` | Unexpected system error or failed rollback | `jobId`, `jobTitle`, `employerEmail`, `employerName`, `amount`, `failureReason`, `sagaId`, `error_details` |
 
 ### Event Flow in the Saga
 1. **Saga Success:** After the job is published (Step 3), a `job.published` event is sent to RabbitMQ.
@@ -104,6 +107,8 @@ This service publishes events to the `notifications` queue to keep the Notificat
 3. **System Error:** If any unexpected error occurs or rollback fails, a `job.system_error` event is sent.
 
 The Notification Service consumes these events and sends appropriate notifications to employers.
+
+Note: RabbitMQ messages are published using Nest RMQ packet shape: `{ pattern: "notifications", data: { ...eventPayload } }`.
 
 ## Compensating Transactions
 

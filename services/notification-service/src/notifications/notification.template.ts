@@ -69,10 +69,11 @@ export function applicationRejectedTemplate(dto: ApplicationEventDto) {
 // ─── Employer templates ───────────────────────────────────────────────────────
 
 export function jobPublishedTemplate(dto: JobEventDto) {
+  const employerName = dto.employerName || 'Employer';
   return {
     subject: `Your job listing is live — ${dto.jobTitle}`,
     html: `
-      <p>Hi ${dto.employerName},</p>
+      <p>Hi ${employerName},</p>
       <p>Your job listing <strong>${dto.jobTitle}</strong> is now live and accepting
          applications.</p>
       <p>We'll notify you as candidates apply.</p>
@@ -81,14 +82,28 @@ export function jobPublishedTemplate(dto: JobEventDto) {
 }
 
 export function jobPaymentFailedTemplate(dto: JobEventDto) {
+  const employerName = dto.employerName || 'Employer';
   return {
     subject: `Payment failed — ${dto.jobTitle} was not posted`,
     html: `
-      <p>Hi ${dto.employerName},</p>
+      <p>Hi ${employerName},</p>
       <p>Unfortunately your payment for <strong>${dto.jobTitle}</strong> could not be
          processed${dto.failureReason ? `: <em>${dto.failureReason}</em>` : '.'}</p>
       <p>Your listing has been removed. Please try posting again with a different
          payment method.</p>
+    `,
+  };
+}
+
+export function jobSystemErrorTemplate(dto: JobEventDto) {
+  const employerName = dto.employerName || 'Employer';
+  return {
+    subject: `We hit an error while posting ${dto.jobTitle}`,
+    html: `
+      <p>Hi ${employerName},</p>
+      <p>We couldn't complete your posting for <strong>${dto.jobTitle}</strong> because of a system issue.</p>
+      <p>${dto.failureReason ? `Details: <em>${dto.failureReason}</em>` : 'Please try again in a few minutes.'}</p>
+      <p>If this keeps happening, contact support with the time this occurred.</p>
     `,
   };
 }
