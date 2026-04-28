@@ -19,6 +19,54 @@ spec:
   mtls:
     mode: PERMISSIVE
 ---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: auth-service-permissive
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: jobs-service-permissive
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: jobs-service
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: payment-service-permissive
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: payment-service
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: application-service-permissive
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: application-service
+  mtls:
+    mode: PERMISSIVE
+---
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:

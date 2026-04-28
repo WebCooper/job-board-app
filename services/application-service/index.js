@@ -143,15 +143,20 @@ app.post('/api/v1/application/apply', async (req, res) => {
 
 // The Saga Orchestrator Endpoint
 app.post('/api/v1/application/post-job', async (req, res) => {
-    const { employer_id, job_details, payment_details } = req.body;
+    const { employer_id, job_details } = req.body;
     let createdJobId = null;
     let sagaId = null;
+    const HARDCODED_POSTING_FEE = 10.00; // Hardcoded $10 charge
 
     try {
         const applicationRepository = getApplicationRepository();
 
         // STEP 0: Initialize Saga State in Database
-        console.log("Saga Step 0: Initializing Saga in Database...");
+        console.log("═══════════════════════════════════════════════════════════");
+        console.log("[SAGA START] Job Posting Saga Initiated");
+        console.log(`Employer ID: ${employer_id}`);
+        console.log(`Posting Fee: $${HARDCODED_POSTING_FEE}`);
+        console.log("[STEP 0] Initializing Saga in Database...");
         const saga = await applicationRepository.save(
             applicationRepository.create({
                 candidate_id: employer_id,
@@ -160,50 +165,68 @@ app.post('/api/v1/application/post-job', async (req, res) => {
             })
         );
         sagaId = saga.id;
+        console.log(`[STEP 0 ✓] Saga initialized | Saga ID: ${sagaId}`);
 
         // STEP 1: Create Draft Job
-        console.log(`Saga Step 1: Creating Draft Job (Saga Tracking ID: ${sagaId})...`);
+        console.log(`\n[STEP 1] Creating Draft Job via Jobs Service at ${JOBS_SERVICE_URL}...`);
+        console.log(`Job Details: ${JSON.stringify(job_details, null, 2)}`);
         const jobResponse = await axios.post(`${JOBS_SERVICE_URL}/api/v1/jobs`, {
             employer_id,
             ...job_details
         });
         createdJobId = jobResponse.data.id;
+        console.log(`[STEP 1 ✓] Draft Job Created | Job ID: ${createdJobId}`);
+        console.log(`Job Status: ${jobResponse.data.status}`);
 
         // Update Saga State: Draft Success
         await applicationRepository.update(
             { id: sagaId },
             { job_id: createdJobId, saga_state: 'DRAFT_CREATED' }
         );
+        console.log(`[STATE UPDATE ✓] Saga state updated to DRAFT_CREATED`);
 
         // STEP 2: Process Payment
-        console.log(`Saga Step 2: Processing Payment for Job ${createdJobId}...`);
+        console.log(`\n[STEP 2] Processing Payment via Payment Service at ${PAYMENT_SERVICE_URL}...`);
+        console.log(`Payment Endpoint: ${PAYMENT_SERVICE_URL}/api/v1/payments/charge`);
+        console.log(`Charge Details: employer_id=${employer_id}, job_id=${createdJobId}, amount=$${HARDCODED_POSTING_FEE}`);
+        
         const paymentResponse = await axios.post(`${PAYMENT_SERVICE_URL}/api/v1/payments/charge`, {
             employer_id,
             job_id: createdJobId,
-            amount: payment_details.amount
+            amount: HARDCODED_POSTING_FEE
         });
+        
+        console.log(`[STEP 2 ✓] Payment Processed | Payment Status: ${paymentResponse.data.status}`);
+        console.log(`Payment Response: ${JSON.stringify(paymentResponse.data, null, 2)}`);
 
         // STEP 3: Publish Job (If Payment Succeeds)
-        console.log("Payment Successful! Saga Step 3: Publishing Job...");
+        console.log(`\n[STEP 3] Publishing Job (making it visible to candidates)...`);
+        console.log(`Publishing endpoint: ${JOBS_SERVICE_URL}/api/v1/jobs/${createdJobId}/publish`);
         await axios.put(`${JOBS_SERVICE_URL}/api/v1/jobs/${createdJobId}/publish`);
+        console.log(`[STEP 3 ✓] Job Published Successfully`);
 
         // Update Saga State: Completed
         await applicationRepository.update(
             { id: sagaId },
             { saga_state: 'COMPLETED', status: 'PUBLISHED' }
         );
+        console.log(`[STATE UPDATE ✓] Saga state updated to COMPLETED`);
 
         // STEP 4: Publish RabbitMQ Event
-        console.log("Saga Step 4: Publishing job.published event to RabbitMQ...");
+        console.log(`\n[STEP 4] Publishing job.published event to RabbitMQ Notifications Queue...`);
         await publishEvent('job.published', {
             job_id: createdJobId,
             employer_id,
             job_title: job_details.title,
-            amount: payment_details.amount,
+            amount: HARDCODED_POSTING_FEE,
             payment_status: paymentResponse.data.status,
             saga_id: sagaId
         });
+        console.log(`[STEP 4 ✓] Event published to RabbitMQ`);
 
+        console.log(`\n[SAGA SUCCESS ✓] Job posting saga completed successfully`);
+        console.log(`═══════════════════════════════════════════════════════════\n`);
+        
         return res.status(201).json({
             message: "Job successfully published.",
             job_id: createdJobId,
@@ -212,14 +235,21 @@ app.post('/api/v1/application/post-job', async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Saga Failed at a step. Initiating compensation...");
+        console.error(`\n[SAGA ERROR] Saga Failed at a step. Initiating compensation...`);
+        console.error(`Error Details: ${error.message}`);
+        if (error.response) {
+            console.error(`Response Status: ${error.response.status}`);
+            console.error(`Response Data: ${JSON.stringify(error.response.data)}`);
+        }
 
         // If failure happened at Step 2 (Payment Failed/Insufficient Funds)
         if (createdJobId && error.response && error.response.status === 402) {
-            console.log(`Compensating Transaction: Deleting Draft Job ${createdJobId}...`);
+            console.log(`\n[COMPENSATION] Payment failed with 402 status | Initiating draft job deletion...`);
+            console.log(`Deleting draft job via: ${JOBS_SERVICE_URL}/api/v1/jobs/${createdJobId}`);
             try {
                 // Rollback Step 1: Delete Draft
                 await axios.delete(`${JOBS_SERVICE_URL}/api/v1/jobs/${createdJobId}`);
+                console.log(`[COMPENSATION ✓] Draft job deleted successfully`);
 
                 // Rollback Step 2: Update Saga State to reflect the successful rollback
                 if (sagaId) {
@@ -227,15 +257,19 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                         { id: sagaId },
                         { saga_state: 'ROLLED_BACK', status: 'FAILED' }
                     );
+                    console.log(`[STATE UPDATE ✓] Saga state updated to ROLLED_BACK`);
                 }
 
                 // Publish payment failed event
+                console.log(`[EVENT] Publishing job.payment_failed event to RabbitMQ...`);
                 await publishEvent('job.payment_failed', {
                     job_id: createdJobId,
                     employer_id,
                     saga_id: sagaId,
                     reason: 'Payment declined - insufficient funds'
                 });
+                console.log(`[COMPENSATION SUCCESS ✓] Payment failure handled and job removed`);
+                console.log(`═══════════════════════════════════════════════════════════\n`);
 
                 return res.status(402).json({
                     error: "PAYMENT_FAILED",
@@ -244,9 +278,13 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                     saga_status: "ROLLED_BACK"
                 });
             } catch (rollbackError) {
-                console.error("CRITICAL ALARM: Rollback failed! System in inconsistent state.", rollbackError.message);
+                console.error(`\n[CRITICAL ALARM ⚠] Rollback FAILED! System in INCONSISTENT state.`);
+                console.error(`Rollback Error: ${rollbackError.message}`);
+                console.error(`Orphaned Job ID: ${createdJobId}`);
+                console.error(`Orphaned Saga ID: ${sagaId}`);
                 
                 // Publish system error event
+                console.log(`[EVENT] Publishing job.system_error event to RabbitMQ for monitoring...`);
                 await publishEvent('job.system_error', {
                     job_id: createdJobId,
                     employer_id,
@@ -254,17 +292,21 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                     reason: 'Rollback failed during payment compensation',
                     error_details: rollbackError.message
                 });
+                console.log(`═══════════════════════════════════════════════════════════\n`);
 
                 return res.status(500).json({ error: "System error during rollback." });
             }
         }
 
         // Catch-all for other unexpected errors (e.g., Jobs service is completely down)
+        console.log(`\n[ERROR PATH] Unexpected error occurred (not payment failure)`);
         if (sagaId) {
             const applicationRepository = getApplicationRepository();
             await applicationRepository.update({ id: sagaId }, { saga_state: 'SYSTEM_ERROR' });
+            console.log(`[STATE UPDATE] Saga state set to SYSTEM_ERROR`);
             
             // Publish system error event
+            console.log(`[EVENT] Publishing job.system_error event to RabbitMQ for monitoring...`);
             await publishEvent('job.system_error', {
                 job_id: createdJobId,
                 employer_id,
@@ -273,6 +315,7 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                 error_details: error.message
             });
         }
+        console.log(`═══════════════════════════════════════════════════════════\n`);
 
         return res.status(500).json({
             error: "SAGA_FAILED",

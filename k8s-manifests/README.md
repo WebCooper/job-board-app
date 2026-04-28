@@ -79,6 +79,7 @@ istioctl install --set profile=demo -y
 
 ```bash
 kubectl label namespace default istio-injection=enabled
+kubectl label namespace kong istio-injection=enabled --overwrite
 ```
 
 3. Restart workloads for sidecars:
@@ -86,6 +87,16 @@ kubectl label namespace default istio-injection=enabled
 ```bash
 kubectl rollout restart deployment user-service-deployment jobs-service-deployment payment-service-deployment application-service-deployment notification-service-deployment
 ```
+
+4. Restart the Kong deployments so the Istio sidecar is injected:
+
+```bash
+kubectl get deployments -n kong
+kubectl rollout restart deployment -n kong kong-controller
+kubectl rollout restart deployment -n kong kong-gateway
+```
+
+Depending on the Helm chart version, the deployment name may be `kong-ingress-kong` or similar. Use the names returned by `kubectl get deployments -n kong`.
 
 ## Phase 4: Messaging + Scale
 
