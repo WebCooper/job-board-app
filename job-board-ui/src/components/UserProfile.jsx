@@ -1,7 +1,7 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import './UserProfile.css';
 
-export function UserProfile({ userProfile }) {
+export function UserProfile({ userProfile, onNavigate }) {
   const { user } = useAuth0();
 
   if (!userProfile) {
@@ -54,7 +54,14 @@ export function UserProfile({ userProfile }) {
           <div className="profile-section">
             <h2>Employer Dashboard</h2>
             <p>You can post job openings and manage applications from candidates.</p>
-            <button className="btn btn-primary">Post a New Job</button>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" onClick={() => onNavigate?.('employer-dashboard')}>
+                View Employer Dashboard
+              </button>
+              <button className="btn btn-secondary" onClick={() => onNavigate?.('post-job')}>
+                Post a New Job
+              </button>
+            </div>
           </div>
         )}
 

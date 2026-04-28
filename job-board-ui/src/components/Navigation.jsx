@@ -29,6 +29,14 @@ export function Navigation({ onNavigate, currentPage, userProfile }) {
             )}
             {userProfile?.role === 'employer' && (
               <button
+                className={`nav-link ${currentPage === 'employer-dashboard' ? 'active' : ''}`}
+                onClick={() => onNavigate('employer-dashboard')}
+              >
+                Employer Dashboard
+              </button>
+            )}
+            {userProfile?.role === 'employer' && (
+              <button
                 className={`nav-link ${currentPage === 'post-job' ? 'active' : ''}`}
                 onClick={() => onNavigate('post-job')}
               >

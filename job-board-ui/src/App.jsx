@@ -8,6 +8,7 @@ import { ApplicationForm } from './components/ApplicationForm';
 import { MyApplications } from './components/MyApplications';
 import { UserProfile } from './components/UserProfile';
 import { PostJob } from './components/PostJob';
+import { EmployerDashboard } from './components/EmployerDashboard';
 import './App.css';
 
 function App() {
@@ -127,11 +128,15 @@ function App() {
         )}
 
         {currentPage === 'profile' && (
-          <UserProfile userProfile={userProfile} />
+          <UserProfile userProfile={userProfile} onNavigate={handleNavigate} />
         )}
 
         {currentPage === 'applications' && (
           <MyApplications userProfile={userProfile} />
+        )}
+
+        {currentPage === 'employer-dashboard' && userProfile?.role === 'employer' && (
+          <EmployerDashboard userProfile={userProfile} />
         )}
 
         {currentPage === 'post-job' && userProfile && (
