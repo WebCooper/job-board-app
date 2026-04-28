@@ -12,6 +12,7 @@ export function PostJob({ userProfile, onSuccess }) {
     salaryMax: '',
     jobType: 'full-time',
     company: '',
+    employerEmail: '',
     requirements: ''
   });
   
@@ -46,6 +47,14 @@ export function PostJob({ userProfile, onSuccess }) {
       }
       if (!formData.company.trim()) {
         setError('Company name is required');
+        return false;
+      }
+      if (!formData.employerEmail.trim()) {
+        setError('Employer email is required');
+        return false;
+      }
+      if (!/^\S+@\S+\.\S+$/.test(formData.employerEmail.trim())) {
+        setError('Employer email must be a valid email address');
         return false;
       }
       if (!formData.salaryMin || !formData.salaryMax) {
@@ -92,6 +101,7 @@ export function PostJob({ userProfile, onSuccess }) {
       // Call the Saga Orchestrator endpoint (charge is hardcoded to $10 on backend)
       const response = await api.post('/api/v1/application/post-job', {
         employer_id: userProfile.id,
+        employer_email: formData.employerEmail.trim(),
         job_details: {
           title: formData.title,
           description: formData.description,
@@ -100,6 +110,8 @@ export function PostJob({ userProfile, onSuccess }) {
           salary_max: parseInt(formData.salaryMax),
           job_type: formData.jobType,
           company: formData.company,
+          employer_email: formData.employerEmail.trim(),
+          employerEmail: formData.employerEmail.trim(),
           requirements: formData.requirements
         }
       });
@@ -119,6 +131,7 @@ export function PostJob({ userProfile, onSuccess }) {
           salaryMax: '',
           jobType: 'full-time',
           company: '',
+          employerEmail: '',
           requirements: ''
         });
       }, 3000);
@@ -207,6 +220,18 @@ export function PostJob({ userProfile, onSuccess }) {
                   onChange={handleInputChange}
                   placeholder="Your company name"
                   maxLength="100"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Employer Email *</label>
+                <input
+                  type="email"
+                  name="employerEmail"
+                  value={formData.employerEmail}
+                  onChange={handleInputChange}
+                  placeholder="employer@example.com"
+                  maxLength="254"
                 />
               </div>
 
@@ -349,6 +374,10 @@ export function PostJob({ userProfile, onSuccess }) {
                 <div className="review-item">
                   <span className="label">Company:</span>
                   <span className="value">{formData.company}</span>
+                </div>
+                <div className="review-item">
+                  <span className="label">Employer Email:</span>
+                  <span className="value">{formData.employerEmail}</span>
                 </div>
                 <div className="review-item">
                   <span className="label">Location:</span>
