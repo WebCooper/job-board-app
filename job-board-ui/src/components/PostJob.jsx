@@ -92,6 +92,8 @@ export function PostJob({ userProfile, onSuccess }) {
       // Call the Saga Orchestrator endpoint (charge is hardcoded to $10 on backend)
       const response = await api.post('/api/v1/application/post-job', {
         employer_id: userProfile.id,
+        employer_email: userProfile.email,
+        employer_name: userProfile.name || userProfile.email,
         job_details: {
           title: formData.title,
           description: formData.description,
