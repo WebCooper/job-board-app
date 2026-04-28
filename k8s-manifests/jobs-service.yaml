@@ -31,7 +31,7 @@ spec:
       serviceAccountName: jobs-service-sa
       containers:
       - name: jobs-service
-        image: chamudithak/jobs-service:2026.04.27.19
+        image: chamudithak/jobs-service:2026.04.28.25
         imagePullPolicy: IfNotPresent
         env:
         - name: PORT
