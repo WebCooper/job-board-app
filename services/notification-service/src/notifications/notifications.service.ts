@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from '../entities/notification.entity';
@@ -17,6 +17,7 @@ export class NotificationsService {
 	constructor(
 		@InjectRepository(Notification)
 		private readonly notificationsRepository: Repository<Notification>,
+	    @Inject(EmailService)
 	    private readonly emailService: EmailService,
 
 	) {}

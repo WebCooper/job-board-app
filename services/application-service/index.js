@@ -210,3 +210,25 @@ initDB().then(() => {
     console.error('Failed to initialize application-service database:', error.message);
     process.exit(1);
 });
+
+// Get applications for a candidate
+app.get('/api/v1/application/candidate/:candidateId', async (req, res) => {
+    const { candidateId } = req.params;
+
+    if (candidateId === undefined || candidateId === null || `${candidateId}`.trim() === '') {
+        return res.status(400).json({ error: 'candidateId is required' });
+    }
+
+    try {
+        const applicationRepository = getApplicationRepository();
+        const applications = await applicationRepository.find({
+            where: { candidate_id: `${candidateId}` },
+            order: { created_at: 'DESC' }
+        });
+
+        return res.status(200).json(Array.isArray(applications) ? applications.map(mapApplicationResponse) : []);
+    } catch (error) {
+        console.error('Failed to fetch applications for candidate:', error.message);
+        return res.status(500).json({ error: 'APPLICATION_FETCH_FAILED', message: error.message });
+    }
+});
