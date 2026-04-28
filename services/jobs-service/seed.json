@@ -1,0 +1,84 @@
+{
+    "jobs": [
+        {
+            "employer_id": "employer-1",
+            "title": "Senior Full Stack Developer",
+            "description": "We are looking for an experienced Full Stack Developer to join our team. You will work on building scalable web applications using Node.js and React.",
+            "salary_min": 120000,
+            "salary_max": 150000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-1",
+            "title": "Product Manager",
+            "description": "Lead our product strategy and vision. We need someone who can drive product development and work closely with engineering and design teams.",
+            "salary_min": 110000,
+            "salary_max": 140000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-2",
+            "title": "DevOps Engineer",
+            "description": "Design and maintain our cloud infrastructure using Kubernetes and Docker. Experience with AWS/GCP required.",
+            "salary_min": 100000,
+            "salary_max": 135000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-2",
+            "title": "Data Scientist",
+            "description": "Join our data team to build ML models and data pipelines. Work with Python, TensorFlow, and big data technologies.",
+            "salary_min": 115000,
+            "salary_max": 155000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-3",
+            "title": "Frontend Developer (React)",
+            "description": "Build beautiful and responsive user interfaces with React. We use TypeScript, Webpack, and modern web technologies.",
+            "salary_min": 90000,
+            "salary_max": 120000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-3",
+            "title": "Backend Developer (Node.js)",
+            "description": "Develop robust backend services using Node.js and Express. Experience with microservices and distributed systems preferred.",
+            "salary_min": 95000,
+            "salary_max": 125000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-4",
+            "title": "QA Engineer",
+            "description": "Ensure quality of our software through automated and manual testing. Experience with Jest, Selenium, and CI/CD pipelines required.",
+            "salary_min": 75000,
+            "salary_max": 100000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-4",
+            "title": "Solutions Architect",
+            "description": "Design scalable cloud solutions for our enterprise clients. AWS/Azure certifications are a plus.",
+            "salary_min": 130000,
+            "salary_max": 170000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-5",
+            "title": "Mobile Developer (iOS)",
+            "description": "Develop native iOS applications using Swift. Experience with SwiftUI and Combine framework required.",
+            "salary_min": 100000,
+            "salary_max": 130000,
+            "status": "PUBLISHED"
+        },
+        {
+            "employer_id": "employer-5",
+            "title": "UX/UI Designer",
+            "description": "Create intuitive and beautiful user experiences. Proficiency with Figma, Adobe XD required.",
+            "salary_min": 85000,
+            "salary_max": 115000,
+            "status": "PUBLISHED"
+        }
+    ]
+}
