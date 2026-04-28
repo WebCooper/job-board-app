@@ -25,6 +25,7 @@ export class NotificationsService {
 	// ─── Public entry point called by the RabbitMQ consumer ──────────────────
 	
 	async handleEvent(raw: Record<string, unknown>): Promise<void> {
+		this.logger.log(`Raw payload received: ${JSON.stringify(raw)}`);
 		const normalized = this.normalizePayload(raw);
 		const eventType = normalized.eventType as NotificationEventType;
 	
