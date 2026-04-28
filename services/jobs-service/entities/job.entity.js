@@ -3,6 +3,11 @@ const { EntitySchema } = require('typeorm');
 const JobEntity = new EntitySchema({
     name: 'Job',
     tableName: 'jobs',
+    indices: [
+        {
+            columns: ['employer_id']
+        }
+    ],
     columns: {
         id: {
             type: 'uuid',

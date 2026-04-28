@@ -3,6 +3,11 @@ const { EntitySchema } = require('typeorm');
 const PaymentEntity = new EntitySchema({
     name: 'Payment',
     tableName: 'payments',
+    indices: [
+        {
+            columns: ['employer_id']
+        }
+    ],
     columns: {
         id: {
             type: 'uuid',

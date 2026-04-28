@@ -55,6 +55,9 @@ curl http://localhost:3004/health
 ## Internal APIs (Used by Saga Orchestrator)
 * `POST /api/v1/payments/charge` - Attempts to charge an employer. Returns `200 OK` on success, or `402 Payment Required` on failure.
 
+## Employer APIs
+* `GET /api/v1/payments/employer/:employer_id` - List all payment attempts made by a specific employer, ordered by newest first.
+
 Example request:
 
 ```bash

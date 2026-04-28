@@ -32,6 +32,22 @@ app.post('/api/v1/payments/charge', async (req, res) => {
     }
 });
 
+// List payments made by a specific employer
+app.get('/api/v1/payments/employer/:employer_id', async (req, res) => {
+    try {
+        const { employer_id } = req.params;
+        const paymentRepository = getPaymentRepository();
+        const payments = await paymentRepository.find({
+            where: { employer_id },
+            order: { created_at: 'DESC' }
+        });
+
+        return res.status(200).json(payments);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.status(200).json({ status: "ok", service: "payment-service" });
