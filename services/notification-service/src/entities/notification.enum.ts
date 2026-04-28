@@ -9,6 +9,7 @@ export enum NotificationEventType {
   // Employer events
   JOB_PUBLISHED = 'job.published',
   JOB_PAYMENT_FAILED = 'job.payment_failed',
+  JOB_SYSTEM_ERROR = 'job.system_error',
   NEW_APPLICANT = 'job.new_applicant',
 }
 

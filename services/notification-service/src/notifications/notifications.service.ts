@@ -25,21 +25,44 @@ export class NotificationsService {
 	// ─── Public entry point called by the RabbitMQ consumer ──────────────────
 	
 	async handleEvent(raw: Record<string, unknown>): Promise<void> {
-		const eventType = raw.eventType as NotificationEventType;
+		const normalized = this.normalizePayload(raw);
+		const eventType = normalized.eventType as NotificationEventType;
 	
 		if (!eventType) {
 		this.logger.warn('Received event with no eventType — discarding');
 		return;
 		}
 	
-		const { dto, errors } = await this.parseAndValidate(eventType, raw);
+		const { dto, errors } = await this.parseAndValidate(eventType, normalized);
 	
 		if (errors.length) {
 		this.logger.error(`Invalid payload for ${eventType}: ${errors.join(', ')}`);
 		return;
 		}
 	
-		await this.dispatch(eventType, dto!, raw);
+		await this.dispatch(eventType, dto!, normalized);
+	}
+
+	private normalizePayload(raw: Record<string, unknown>): Record<string, unknown> {
+		const normalized = { ...raw };
+
+		if (normalized.jobId === undefined && normalized.job_id !== undefined) {
+			normalized.jobId = normalized.job_id;
+		}
+		if (normalized.jobTitle === undefined && normalized.job_title !== undefined) {
+			normalized.jobTitle = normalized.job_title;
+		}
+		if (normalized.employerEmail === undefined && normalized.employer_email !== undefined) {
+			normalized.employerEmail = normalized.employer_email;
+		}
+		if (normalized.employerName === undefined && normalized.employer_name !== undefined) {
+			normalized.employerName = normalized.employer_name;
+		}
+		if (normalized.failureReason === undefined && normalized.reason !== undefined) {
+			normalized.failureReason = normalized.reason;
+		}
+
+		return normalized;
 	}
 	
 	// Route event type → template → send
@@ -88,6 +111,11 @@ export class NotificationsService {
 		case NotificationEventType.JOB_PAYMENT_FAILED: {
 			const d = dto as JobEventDto;
 			jobs.push({ to: d.employerEmail, ...templates.jobPaymentFailedTemplate(d) });
+			break;
+		}
+		case NotificationEventType.JOB_SYSTEM_ERROR: {
+			const d = dto as JobEventDto;
+			jobs.push({ to: d.employerEmail, ...templates.jobSystemErrorTemplate(d) });
 			break;
 		}
 		case NotificationEventType.NEW_APPLICANT: {
@@ -146,6 +174,7 @@ export class NotificationsService {
 		const isJobEvent = [
 			NotificationEventType.JOB_PUBLISHED,
 			NotificationEventType.JOB_PAYMENT_FAILED,
+			NotificationEventType.JOB_SYSTEM_ERROR,
 		].includes(eventType);
 	
 		const DtoClass: ClassConstructor<EventDto> = isJobEvent

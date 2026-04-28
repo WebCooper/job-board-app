@@ -42,10 +42,16 @@ const publishEvent = async (eventType, payload) => {
     }
 
     try {
-        const eventMessage = JSON.stringify({
+        const eventData = {
             eventType,
             timestamp: new Date().toISOString(),
             ...payload
+        };
+
+        // Nest RMQ transport expects { pattern, data } packet shape.
+        const eventMessage = JSON.stringify({
+            pattern: NOTIFICATIONS_QUEUE,
+            data: eventData
         });
 
         amqpChannel.sendToQueue(NOTIFICATIONS_QUEUE, Buffer.from(eventMessage), {
@@ -147,10 +153,20 @@ app.post('/api/v1/application/post-job', async (req, res) => {
     let createdJobId = null;
     let sagaId = null;
     const HARDCODED_POSTING_FEE = 10.00; // Hardcoded $10 charge
+    const applicationRepository = getApplicationRepository();
+
+    const employerEmail =
+        (job_details && (job_details.employerEmail || job_details.employer_email)) ||
+        req.body.employer_email ||
+        process.env.NOTIFICATION_FALLBACK_EMAIL ||
+        null;
+    const employerName =
+        (job_details && (job_details.employerName || job_details.employer_name)) ||
+        req.body.employer_name ||
+        'Employer';
+    const jobTitle = (job_details && job_details.title) || 'Untitled Job';
 
     try {
-        const applicationRepository = getApplicationRepository();
-
         // STEP 0: Initialize Saga State in Database
         console.log("═══════════════════════════════════════════════════════════");
         console.log("[SAGA START] Job Posting Saga Initiated");
@@ -215,12 +231,15 @@ app.post('/api/v1/application/post-job', async (req, res) => {
         // STEP 4: Publish RabbitMQ Event
         console.log(`\n[STEP 4] Publishing job.published event to RabbitMQ Notifications Queue...`);
         await publishEvent('job.published', {
-            job_id: createdJobId,
+            jobId: createdJobId,
             employer_id,
-            job_title: job_details.title,
+            jobTitle,
+            employerEmail,
+            employerName,
             amount: HARDCODED_POSTING_FEE,
             payment_status: paymentResponse.data.status,
-            saga_id: sagaId
+            saga_id: sagaId,
+            sagaId
         });
         console.log(`[STEP 4 ✓] Event published to RabbitMQ`);
 
@@ -263,10 +282,15 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                 // Publish payment failed event
                 console.log(`[EVENT] Publishing job.payment_failed event to RabbitMQ...`);
                 await publishEvent('job.payment_failed', {
-                    job_id: createdJobId,
+                    jobId: createdJobId,
                     employer_id,
+                    jobTitle,
+                    employerEmail,
+                    employerName,
+                    amount: HARDCODED_POSTING_FEE,
                     saga_id: sagaId,
-                    reason: 'Payment declined - insufficient funds'
+                    sagaId,
+                    failureReason: 'Payment declined - insufficient funds'
                 });
                 console.log(`[COMPENSATION SUCCESS ✓] Payment failure handled and job removed`);
                 console.log(`═══════════════════════════════════════════════════════════\n`);
@@ -308,10 +332,16 @@ app.post('/api/v1/application/post-job', async (req, res) => {
             // Publish system error event
             console.log(`[EVENT] Publishing job.system_error event to RabbitMQ for monitoring...`);
             await publishEvent('job.system_error', {
-                job_id: createdJobId,
+                jobId: createdJobId,
                 employer_id,
+                jobTitle,
+                employerEmail,
+                employerName,
+                amount: HARDCODED_POSTING_FEE,
                 saga_id: sagaId,
+                sagaId,
                 reason: 'Unexpected system error',
+                failureReason: error.message,
                 error_details: error.message
             });
         }
