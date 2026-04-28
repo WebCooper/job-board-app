@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/axios';
 import './JobListings.css';
 
-export function JobListings({ onSelectJob, userProfile }) {
-  const [jobs, setJobs] = useState([]);
+export function JobListings({ onSelectJob }) {
+  const [allJobs, setAllJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
@@ -12,45 +12,37 @@ export function JobListings({ onSelectJob, userProfile }) {
     jobType: ''
   });
   const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState(null);
+  const [searchSource, setSearchSource] = useState(null);
+  const [searchDurationMs, setSearchDurationMs] = useState(null);
+
+  const itemsPerPage = 10;
+  const searchQuery = filters.search.trim();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchJobs();
+      fetchJobs(searchQuery);
     }, 300);
     return () => clearTimeout(timer);
-  }, [filters, page]);
+  }, [searchQuery]);
 
-  const fetchJobs = async () => {
+  const fetchJobs = async (query) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get('/api/v2/jobs', {
-        params: {
-          page: page,
-          limit: 10,
-          q: filters.search
-        }
-      });
-      const data = response.data;
-      
-      let fetchedJobs = data.data || [];
-      
-      // Frontend filtering for location and type
-      if (filters.location || filters.jobType) {
-        fetchedJobs = fetchedJobs.filter(job => {
-          const matchesLocation = !filters.location || 
-            job.location?.toLowerCase().includes(filters.location.toLowerCase());
-          
-          const matchesType = !filters.jobType || 
-            job.type?.toLowerCase() === filters.jobType.toLowerCase();
-          
-          return matchesLocation && matchesType;
-        });
-      }
+      const response = query
+        ? await api.get('/api/v1/jobs/search', { params: { q: query } })
+        : await api.get('/api/v1/jobs');
 
-      setJobs(fetchedJobs);
-      setMeta(data.meta);
+      const payload = response.data;
+      const fetchedJobs = Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+      setAllJobs(fetchedJobs);
+      setSearchSource(query ? payload?.source || 'database' : null);
+      setSearchDurationMs(query ? payload?.duration_ms ?? null : null);
     } catch (err) {
       console.error('Failed to fetch jobs:', err);
       setError('Failed to load job listings. Please try again later.');
@@ -65,14 +57,43 @@ export function JobListings({ onSelectJob, userProfile }) {
       ...prev,
       [name]: value
     }));
-    setPage(1);
+    if (name === 'search') {
+      setPage(1);
+    }
   };
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters.location, filters.jobType]);
+
+  const filteredJobs = useMemo(() => {
+    return allJobs.filter((job) => {
+      const matchesLocation = !filters.location ||
+        `${job.location || 'Remote'}`.toLowerCase().includes(filters.location.toLowerCase());
+
+      const matchesType = !filters.jobType ||
+        `${job.type || 'full-time'}`.toLowerCase() === filters.jobType.toLowerCase();
+
+      return matchesLocation && matchesType;
+    });
+  }, [allJobs, filters.location, filters.jobType]);
+
+  const totalPages = Math.max(Math.ceil(filteredJobs.length / itemsPerPage), 1);
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (page - 1) * itemsPerPage;
+    return filteredJobs.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredJobs, page]);
+
+  const activeFiltersCount = [searchQuery, filters.location, filters.jobType].filter(Boolean).length;
 
   return (
     <div className="jobs-container">
       <div className="jobs-header">
         <h1>Available Positions</h1>
-        <p className="jobs-count">{jobs.length} jobs found</p>
+        <p className="jobs-count">
+          {filteredJobs.length} job{filteredJobs.length === 1 ? '' : 's'} found
+          {activeFiltersCount > 0 && ' with current filters'}
+        </p>
       </div>
 
       <div className="filters-section">
@@ -106,18 +127,27 @@ export function JobListings({ onSelectJob, userProfile }) {
         </select>
       </div>
 
+      {searchQuery && (
+        <div className="search-source-banner">
+          <span>
+            Search results loaded from {searchSource === 'cache' ? 'Redis cache' : 'database'}
+            {typeof searchDurationMs === 'number' && ` in ${searchDurationMs.toFixed(2)} ms`}
+          </span>
+        </div>
+      )}
+
       {error && <div className="error-message">{error}</div>}
 
       {loading ? (
         <div className="loading">Loading jobs...</div>
-      ) : jobs.length === 0 ? (
+      ) : paginatedJobs.length === 0 ? (
         <div className="no-jobs">
           <p>No jobs found matching your criteria.</p>
         </div>
       ) : (
         <>
           <div className="jobs-list">
-            {jobs.map(job => (
+            {paginatedJobs.map(job => (
               <div
                 key={job.id}
                 className="job-card"
@@ -155,21 +185,21 @@ export function JobListings({ onSelectJob, userProfile }) {
               </div>
             ))}
           </div>
-          
-          {meta && meta.total_pages > 1 && (
+
+          {totalPages > 1 && (
             <div className="pagination">
               <button 
-                disabled={!meta.has_prev} 
+                disabled={page === 1} 
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 className="btn-pagination"
               >
                 Previous
               </button>
               <span className="page-info">
-                Page {meta.page} of {meta.total_pages}
+                Page {page} of {totalPages}
               </span>
               <button 
-                disabled={!meta.has_next} 
+                disabled={page >= totalPages} 
                 onClick={() => setPage(p => p + 1)}
                 className="btn-pagination"
               >
