@@ -103,6 +103,23 @@ const seedMockJobs = async () => {
     return { seeded: true, createdJobs };
 };
 
+// v1: List all jobs posted by a specific employer
+app.get('/api/v1/jobs/employer/:employer_id', async (req, res) => {
+    try {
+        const { employer_id } = req.params;
+        const jobRepository = getJobRepository();
+        const jobs = await jobRepository.find({
+            where: { employer_id },
+            order: { created_at: 'DESC' }
+        });
+
+        return res.status(200).json(jobs);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+
 // v1: Basic listing for backward compatibility
 app.get('/api/v1/jobs', async (_req, res) => {
     try {
