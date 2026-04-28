@@ -32,7 +32,7 @@ spec:
       serviceAccountName: notification-service-sa
       containers:
       - name: notification-service
-        image: chamudithak/notification-service:2026.04.27.16
+        image: chamudithak/notification-service:2026.04.28.23
         imagePullPolicy: IfNotPresent
         command:
           - /bin/sh

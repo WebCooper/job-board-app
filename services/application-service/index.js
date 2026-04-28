@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const amqp = require('amqplib');
 const { initDB, getApplicationRepository } = require('./db');
 require('dotenv').config();
 
@@ -13,6 +14,50 @@ const JOBS_SERVICE_URL = process.env.JOBS_SERVICE_URL && process.env.JOBS_SERVIC
 const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL && process.env.PAYMENT_SERVICE_URL !== '<no value>'
     ? process.env.PAYMENT_SERVICE_URL
     : 'http://payment-service';
+
+const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
+const NOTIFICATIONS_QUEUE = 'notifications';
+
+let amqpConnection = null;
+let amqpChannel = null;
+
+// Initialize RabbitMQ Connection
+const initRabbitMQ = async () => {
+    try {
+        amqpConnection = await amqp.connect(RABBITMQ_URL);
+        amqpChannel = await amqpConnection.createChannel();
+        await amqpChannel.assertQueue(NOTIFICATIONS_QUEUE, { durable: true });
+        console.log(`Connected to RabbitMQ. Notifications queue ready: ${NOTIFICATIONS_QUEUE}`);
+    } catch (error) {
+        console.error('Failed to initialize RabbitMQ:', error.message);
+        console.warn('Continuing without RabbitMQ. Events will not be published.');
+    }
+};
+
+// Publish event to RabbitMQ
+const publishEvent = async (eventType, payload) => {
+    if (!amqpChannel) {
+        console.warn(`Event not published (RabbitMQ unavailable): ${eventType}`);
+        return;
+    }
+
+    try {
+        const eventMessage = JSON.stringify({
+            eventType,
+            timestamp: new Date().toISOString(),
+            ...payload
+        });
+
+        amqpChannel.sendToQueue(NOTIFICATIONS_QUEUE, Buffer.from(eventMessage), {
+            persistent: true,
+            contentType: 'application/json'
+        });
+
+        console.log(`Event published to RabbitMQ: ${eventType}`);
+    } catch (error) {
+        console.error(`Failed to publish event ${eventType}:`, error.message);
+    }
+};
 
 const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
 
@@ -148,7 +193,16 @@ app.post('/api/v1/application/post-job', async (req, res) => {
             { saga_state: 'COMPLETED', status: 'PUBLISHED' }
         );
 
-        // TODO in Phase 4: Publish RabbitMQ Event here (Notification Service)
+        // STEP 4: Publish RabbitMQ Event
+        console.log("Saga Step 4: Publishing job.published event to RabbitMQ...");
+        await publishEvent('job.published', {
+            job_id: createdJobId,
+            employer_id,
+            job_title: job_details.title,
+            amount: payment_details.amount,
+            payment_status: paymentResponse.data.status,
+            saga_id: sagaId
+        });
 
         return res.status(201).json({
             message: "Job successfully published.",
@@ -175,6 +229,14 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                     );
                 }
 
+                // Publish payment failed event
+                await publishEvent('job.payment_failed', {
+                    job_id: createdJobId,
+                    employer_id,
+                    saga_id: sagaId,
+                    reason: 'Payment declined - insufficient funds'
+                });
+
                 return res.status(402).json({
                     error: "PAYMENT_FAILED",
                     message: "Card declined. The draft job has been removed (Rollback successful).",
@@ -183,7 +245,16 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                 });
             } catch (rollbackError) {
                 console.error("CRITICAL ALARM: Rollback failed! System in inconsistent state.", rollbackError.message);
-                // In a production environment, this would trigger an alert for manual developer intervention.
+                
+                // Publish system error event
+                await publishEvent('job.system_error', {
+                    job_id: createdJobId,
+                    employer_id,
+                    saga_id: sagaId,
+                    reason: 'Rollback failed during payment compensation',
+                    error_details: rollbackError.message
+                });
+
                 return res.status(500).json({ error: "System error during rollback." });
             }
         }
@@ -192,6 +263,15 @@ app.post('/api/v1/application/post-job', async (req, res) => {
         if (sagaId) {
             const applicationRepository = getApplicationRepository();
             await applicationRepository.update({ id: sagaId }, { saga_state: 'SYSTEM_ERROR' });
+            
+            // Publish system error event
+            await publishEvent('job.system_error', {
+                job_id: createdJobId,
+                employer_id,
+                saga_id: sagaId,
+                reason: 'Unexpected system error',
+                error_details: error.message
+            });
         }
 
         return res.status(500).json({
@@ -202,13 +282,23 @@ app.post('/api/v1/application/post-job', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3003;
-initDB().then(() => {
+initDB().then(async () => {
+    await initRabbitMQ();
     app.listen(PORT, () => {
         console.log(`Application Service (Saga Orchestrator) running on port ${PORT}`);
     });
 }).catch((error) => {
     console.error('Failed to initialize application-service database:', error.message);
     process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('Shutting down gracefully...');
+    if (amqpConnection) {
+        await amqpConnection.close();
+    }
+    process.exit(0);
 });
 
 // Get applications for a candidate

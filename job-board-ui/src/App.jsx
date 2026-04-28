@@ -5,7 +5,9 @@ import { Navigation } from './components/Navigation';
 import { JobListings } from './components/JobListings';
 import { JobDetail } from './components/JobDetail';
 import { ApplicationForm } from './components/ApplicationForm';
+import { MyApplications } from './components/MyApplications';
 import { UserProfile } from './components/UserProfile';
+import { PostJob } from './components/PostJob';
 import './App.css';
 
 function App() {
@@ -54,6 +56,7 @@ function App() {
   const handleNavigate = (page) => {
     setCurrentPage(page);
     setSelectedJob(null);
+    setShowApplicationForm(false);
   };
 
   const handleSelectJob = (job) => {
@@ -128,17 +131,11 @@ function App() {
         )}
 
         {currentPage === 'applications' && (
-          <div className="coming-soon">
-            <h2>My Applications</h2>
-            <p>This feature will display your job applications history.</p>
-          </div>
+          <MyApplications userProfile={userProfile} />
         )}
 
-        {currentPage === 'post-job' && (
-          <div className="coming-soon">
-            <h2>Post a New Job</h2>
-            <p>This feature is for employers to post new job openings.</p>
-          </div>
+        {currentPage === 'post-job' && userProfile && (
+          <PostJob userProfile={userProfile} onSuccess={() => handleNavigate('jobs')} />
         )}
       </main>
 

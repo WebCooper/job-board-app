@@ -1,0 +1,151 @@
+.applications-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.applications-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.applications-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 2rem;
+}
+
+.applications-header p {
+  margin: 0;
+  color: #666;
+}
+
+.applications-count {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  background: rgba(102, 126, 234, 0.1);
+  color: #4c5bd4;
+  font-weight: 700;
+}
+
+.applications-loading,
+.applications-empty,
+.applications-error {
+  border-radius: 16px;
+  padding: 1.25rem;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.applications-empty h2 {
+  margin-top: 0;
+}
+
+.applications-error {
+  margin-bottom: 1rem;
+  border-left: 4px solid #dc2626;
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.applications-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.application-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.25rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.08);
+}
+
+.application-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.application-card-header h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.application-card-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.application-card-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.application-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.application-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+}
+
+.application-value {
+  font-weight: 600;
+  color: #111827;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.status-badge-neutral {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.status-badge-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 768px) {
+  .applications-header {
+    flex-direction: column;
+  }
+
+  .applications-count {
+    width: fit-content;
+  }
+
+  .application-card-header {
+    flex-direction: column;
+  }
+}

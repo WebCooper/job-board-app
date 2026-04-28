@@ -16,6 +16,7 @@ PORT=3003
 DATABASE_URL=postgresql://app_admin:app_password@localhost:5432/applications_db
 JOBS_SERVICE_URL=http://localhost:3002
 PAYMENT_SERVICE_URL=http://localhost:3004
+RABBITMQ_URL=amqp://guest:guest@localhost:5672
 ```
 
 Environment variables:
@@ -23,6 +24,7 @@ Environment variables:
 - `DATABASE_URL`: PostgreSQL connection string for the applications database
 - `JOBS_SERVICE_URL`: Base URL of the Jobs Service
 - `PAYMENT_SERVICE_URL`: Base URL of the Payment Service
+- `RABBITMQ_URL`: RabbitMQ connection string (defaults to `amqp://guest:guest@localhost:5672`)
 
 ## Database Setup
 1. Create the database user and database (example):
@@ -85,6 +87,42 @@ Possible outcomes:
 - `402 Payment Required`: Payment failed, compensation deleted draft job, saga state becomes `ROLLED_BACK`
 - `500 Internal Server Error`: Unexpected failure in orchestration or downstream services
 
+## RabbitMQ Event Publishing
+This service publishes events to the `notifications` queue to keep the Notification Service informed of job posting outcomes. Ensure RabbitMQ is running and accessible at the URL specified in `RABBITMQ_URL`.
+
+### Published Events
+
+| Event Type | Trigger | Payload |
+|---|---|---|
+| `job.published` | Job successfully published after payment | `job_id`, `employer_id`, `job_title`, `amount`, `payment_status`, `saga_id` |
+| `job.payment_failed` | Payment fails during Saga Step 2 | `job_id`, `employer_id`, `saga_id`, `reason` |
+| `job.system_error` | Unexpected system error or failed rollback | `job_id`, `employer_id`, `saga_id`, `reason`, `error_details` |
+
+### Event Flow in the Saga
+1. **Saga Success:** After the job is published (Step 3), a `job.published` event is sent to RabbitMQ.
+2. **Payment Failure:** If Step 2 (payment) fails and rollback succeeds, a `job.payment_failed` event is sent.
+3. **System Error:** If any unexpected error occurs or rollback fails, a `job.system_error` event is sent.
+
+The Notification Service consumes these events and sends appropriate notifications to employers.
+
+## Compensating Transactions
+
+The Saga orchestrator handles failures gracefully:
+
+1. **Payment Failure:** If the employer's card is declined (402 status), the orchestrator automatically:
+   - Deletes the draft job from the Jobs Service
+   - Updates Saga state to `ROLLED_BACK`
+   - Publishes `job.payment_failed` event to notify the employer
+   - Returns a clear error message to the client
+
+2. **Rollback Failure:** If the rollback itself fails (e.g., Jobs Service is down), the orchestrator:
+   - Logs a critical alarm
+   - Updates Saga state to `SYSTEM_ERROR`
+   - Publishes `job.system_error` event for manual intervention
+   - Returns a system error response
+
+3. **Saga State Tracking:** The saga state in the database is the source of truth for transaction state, enabling recovery after system crashes.
+
 ## Candidate API
 * `POST /api/v1/application/apply` - Submit a job application for a published job.
 
@@ -119,4 +157,4 @@ Possible outcomes:
 You can repeat step 5 multiple times to observe both success and rollback scenarios because payment success is randomized.
 
 ## Tech Stack
-Node.js, Express, Axios, TypeORM, PostgreSQL (`applications_db`), Docker
+Node.js, Express, Axios, TypeORM, PostgreSQL (`applications_db`), RabbitMQ (amqplib), Docker
