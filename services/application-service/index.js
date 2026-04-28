@@ -149,21 +149,22 @@ app.post('/api/v1/application/apply', async (req, res) => {
 
 // The Saga Orchestrator Endpoint
 app.post('/api/v1/application/post-job', async (req, res) => {
-    const { employer_id, job_details } = req.body;
+    const { employer_id, job_details, employer_email, employer_name } = req.body;
     let createdJobId = null;
     let sagaId = null;
     const HARDCODED_POSTING_FEE = 10.00; // Hardcoded $10 charge
     const applicationRepository = getApplicationRepository();
 
-    const employerEmail =
-        (job_details && (job_details.employerEmail || job_details.employer_email)) ||
-        req.body.employer_email ||
-        process.env.NOTIFICATION_FALLBACK_EMAIL ||
-        null;
-    const employerName =
-        (job_details && (job_details.employerName || job_details.employer_name)) ||
-        req.body.employer_name ||
-        'Employer';
+    // Validate that employer_email is provided
+    if (!employer_email || typeof employer_email !== 'string' || !employer_email.trim()) {
+        return res.status(400).json({
+            error: 'INVALID_REQUEST',
+            message: 'employer_email is required and must be a valid email address'
+        });
+    }
+
+    const employerEmail = employer_email.trim();
+    const finalEmployerName = (employer_name && employer_name.trim()) || 'Employer';
     const jobTitle = (job_details && job_details.title) || 'Untitled Job';
 
     try {
@@ -205,13 +206,13 @@ app.post('/api/v1/application/post-job', async (req, res) => {
         console.log(`\n[STEP 2] Processing Payment via Payment Service at ${PAYMENT_SERVICE_URL}...`);
         console.log(`Payment Endpoint: ${PAYMENT_SERVICE_URL}/api/v1/payments/charge`);
         console.log(`Charge Details: employer_id=${employer_id}, job_id=${createdJobId}, amount=$${HARDCODED_POSTING_FEE}`);
-        
+
         const paymentResponse = await axios.post(`${PAYMENT_SERVICE_URL}/api/v1/payments/charge`, {
             employer_id,
             job_id: createdJobId,
             amount: HARDCODED_POSTING_FEE
         });
-        
+
         console.log(`[STEP 2 ✓] Payment Processed | Payment Status: ${paymentResponse.data.status}`);
         console.log(`Payment Response: ${JSON.stringify(paymentResponse.data, null, 2)}`);
 
@@ -235,7 +236,7 @@ app.post('/api/v1/application/post-job', async (req, res) => {
             employer_id,
             jobTitle,
             employerEmail,
-            employerName,
+            employerName: finalEmployerName,
             amount: HARDCODED_POSTING_FEE,
             payment_status: paymentResponse.data.status,
             saga_id: sagaId,
@@ -245,7 +246,7 @@ app.post('/api/v1/application/post-job', async (req, res) => {
 
         console.log(`\n[SAGA SUCCESS ✓] Job posting saga completed successfully`);
         console.log(`═══════════════════════════════════════════════════════════\n`);
-        
+
         return res.status(201).json({
             message: "Job successfully published.",
             job_id: createdJobId,
@@ -286,7 +287,7 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                     employer_id,
                     jobTitle,
                     employerEmail,
-                    employerName,
+                    employerName: finalEmployerName,
                     amount: HARDCODED_POSTING_FEE,
                     saga_id: sagaId,
                     sagaId,
@@ -306,7 +307,7 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                 console.error(`Rollback Error: ${rollbackError.message}`);
                 console.error(`Orphaned Job ID: ${createdJobId}`);
                 console.error(`Orphaned Saga ID: ${sagaId}`);
-                
+
                 // Publish system error event
                 console.log(`[EVENT] Publishing job.system_error event to RabbitMQ for monitoring...`);
                 await publishEvent('job.system_error', {
@@ -328,7 +329,7 @@ app.post('/api/v1/application/post-job', async (req, res) => {
             const applicationRepository = getApplicationRepository();
             await applicationRepository.update({ id: sagaId }, { saga_state: 'SYSTEM_ERROR' });
             console.log(`[STATE UPDATE] Saga state set to SYSTEM_ERROR`);
-            
+
             // Publish system error event
             console.log(`[EVENT] Publishing job.system_error event to RabbitMQ for monitoring...`);
             await publishEvent('job.system_error', {
@@ -336,7 +337,7 @@ app.post('/api/v1/application/post-job', async (req, res) => {
                 employer_id,
                 jobTitle,
                 employerEmail,
-                employerName,
+                employerName: finalEmployerName,
                 amount: HARDCODED_POSTING_FEE,
                 saga_id: sagaId,
                 sagaId,
