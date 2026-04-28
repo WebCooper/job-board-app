@@ -93,6 +93,22 @@ app.get('/api/v1/jobs', async (_req, res) => {
     }
 });
 
+// v1: List all jobs posted by a specific employer
+app.get('/api/v1/jobs/employer/:employer_id', async (req, res) => {
+    try {
+        const { employer_id } = req.params;
+        const jobRepository = getJobRepository();
+        const jobs = await jobRepository.find({
+            where: { employer_id },
+            order: { created_at: 'DESC' }
+        });
+
+        return res.status(200).json(jobs);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // v2: Listing with search query, salary_range filter + pagination metadata + Redis caching
 app.get('/api/v2/jobs', async (req, res) => {
     try {
@@ -276,7 +292,7 @@ app.delete('/api/v1/jobs/:id', async (req, res) => {
 app.post('/api/v1/jobs/seed', async (req, res) => {
     try {
         const jobRepository = getJobRepository();
-        
+
         // Sample jobs data
         const sampleJobs = [
             {
@@ -364,9 +380,9 @@ app.post('/api/v1/jobs/seed', async (req, res) => {
         // Check if jobs already exist
         const existingCount = await jobRepository.count();
         if (existingCount > 0) {
-            return res.status(400).json({ 
-                error: 'Jobs database already seeded', 
-                existingCount 
+            return res.status(400).json({
+                error: 'Jobs database already seeded',
+                existingCount
             });
         }
 

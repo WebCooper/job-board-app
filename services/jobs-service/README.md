@@ -94,6 +94,9 @@ curl http://localhost:3002/health
 * `PUT /api/v1/jobs/:id/publish` - Publish a job.
 * `DELETE /api/v1/jobs/:id` - Hard delete a draft job.
 
+## Employer APIs
+* `GET /api/v1/jobs/employer/:employer_id` - List all jobs created by a specific employer, ordered by newest first.
+
 ## Public APIs - Candidate Facing
 The following public endpoints are planned but not implemented yet in the current code:
 * `GET /api/v1/jobs` - List basic published jobs.
