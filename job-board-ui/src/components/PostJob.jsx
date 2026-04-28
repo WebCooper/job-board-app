@@ -12,9 +12,10 @@ export function PostJob({ userProfile, onSuccess }) {
     salaryMax: '',
     jobType: 'full-time',
     company: '',
-    requirements: '',
-    amount: ''
+    requirements: ''
   });
+  
+  const POSTING_FEE = 10.00; // Hardcoded $10 posting fee
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -55,15 +56,6 @@ export function PostJob({ userProfile, onSuccess }) {
         setError('Minimum salary cannot be greater than maximum salary');
         return false;
       }
-    } else if (step === 2) {
-      if (!formData.amount) {
-        setError('Posting fee is required');
-        return false;
-      }
-      if (isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
-        setError('Posting fee must be a positive number');
-        return false;
-      }
     }
     setError(null);
     return true;
@@ -91,7 +83,7 @@ export function PostJob({ userProfile, onSuccess }) {
     setSagaStatus(null);
 
     try {
-      // Call the Saga Orchestrator endpoint
+      // Call the Saga Orchestrator endpoint (charge is hardcoded to $10 on backend)
       const response = await api.post('/api/v1/application/post-job', {
         employer_id: userProfile.id,
         job_details: {
@@ -103,9 +95,6 @@ export function PostJob({ userProfile, onSuccess }) {
           job_type: formData.jobType,
           company: formData.company,
           requirements: formData.requirements
-        },
-        payment_details: {
-          amount: parseFloat(formData.amount)
         }
       });
 
@@ -124,8 +113,7 @@ export function PostJob({ userProfile, onSuccess }) {
           salaryMax: '',
           jobType: 'full-time',
           company: '',
-          requirements: '',
-          amount: ''
+          requirements: ''
         });
       }, 3000);
     } catch (err) {
@@ -317,25 +305,22 @@ export function PostJob({ userProfile, onSuccess }) {
               </div>
 
               <div className="form-group">
-                <label>Posting Fee (USD) *</label>
+                <label>Posting Fee (USD)</label>
                 <div className="fee-input-wrapper">
                   <span className="currency">$</span>
                   <input
-                    type="number"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleInputChange}
-                    placeholder="99.00"
-                    step="0.01"
-                    min="0"
-                    max="10000"
+                    type="text"
+                    value={POSTING_FEE.toFixed(2)}
+                    disabled
+                    readOnly
                   />
                 </div>
+                <small>Fixed fee for all job postings</small>
               </div>
 
               <div className="payment-warning">
                 <p>
-                  <strong>Note:</strong> Your card will be charged the specified amount to publish this job listing.
+                  <strong>Note:</strong> Your card will be charged ${POSTING_FEE.toFixed(2)} to publish this job listing.
                   If payment fails, the job will not be created. Payment processing is secure and encrypted.
                 </p>
               </div>
@@ -385,7 +370,7 @@ export function PostJob({ userProfile, onSuccess }) {
                 <h3>Payment Details</h3>
                 <div className="review-item">
                   <span className="label">Posting Fee:</span>
-                  <span className="value amount">${parseFloat(formData.amount).toFixed(2)}</span>
+                  <span className="value amount">${POSTING_FEE.toFixed(2)}</span>
                 </div>
                 <p className="payment-notice">
                   By clicking "Publish & Pay", you authorize the payment and your job will be published immediately upon successful payment.

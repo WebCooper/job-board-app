@@ -22,6 +22,7 @@ Install Istio and enable injection for `default` namespace:
 ```powershell
 istioctl install --set profile=demo -y
 kubectl label namespace default istio-injection=enabled --overwrite
+kubectl label namespace kong istio-injection=enabled --overwrite
 ```
 
 ---
@@ -199,9 +200,14 @@ kubectl exec $notifPod -c vault-agent -- sh -c "cat /vault/secrets/database"
 helm repo add kong https://charts.konghq.com
 helm repo update
 helm install kong kong/ingress -n kong --create-namespace
+kubectl get deployments -n kong
+kubectl rollout restart deployment -n kong kong-controller
+kubectl rollout restart deployment -n kong kong-gateway
 kubectl apply -f k8s-manifests/ingress.yaml
 kubectl port-forward -n kong svc/kong-gateway-proxy 8000:80
 ```
+
+Depending on the Helm chart version, the deployment name may be `kong-ingress-kong` or similar. Use the names returned by `kubectl get deployments -n kong`.
 
 ---
 
