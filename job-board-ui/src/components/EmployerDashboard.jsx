@@ -51,6 +51,24 @@ export function EmployerDashboard({ userProfile }) {
   const [paymentsError, setPaymentsError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
+  const loadEmployerJobs = async () => {
+    try {
+      const response = await api.get(`/api/v1/jobs/employer/${employerId}`);
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      const status = error?.response?.status;
+
+      if (status !== 404) {
+        throw error;
+      }
+
+      const fallbackResponse = await api.get('/api/v1/jobs');
+      const fallbackJobs = Array.isArray(fallbackResponse.data) ? fallbackResponse.data : [];
+
+      return fallbackJobs.filter((job) => `${job.employer_id ?? job.employerId ?? ''}` === `${employerId}`);
+    }
+  };
+
   const loadEmployerHistory = async () => {
     if (!employerId) {
       setJobs([]);
@@ -64,12 +82,12 @@ export function EmployerDashboard({ userProfile }) {
 
     try {
       const [jobsResult, paymentsResult] = await Promise.allSettled([
-        api.get(`/api/v1/jobs/employer/${employerId}`),
+        loadEmployerJobs(),
         api.get(`/api/v1/payments/employer/${employerId}`),
       ]);
 
       if (jobsResult.status === 'fulfilled') {
-        setJobs(Array.isArray(jobsResult.value.data) ? jobsResult.value.data : []);
+        setJobs(jobsResult.value);
       } else {
         setJobs([]);
         setJobsError('Unable to load your job history right now.');
@@ -201,7 +219,7 @@ export function EmployerDashboard({ userProfile }) {
                       <div>
                         <span className="history-label">Salary range</span>
                         <span className="history-value">
-                          {job.salary_min || job.salary_max
+                          {job.salary_min != null || job.salary_max != null
                             ? `${formatCurrency(job.salary_min)} - ${formatCurrency(job.salary_max)}`
                             : 'Not set'}
                         </span>
